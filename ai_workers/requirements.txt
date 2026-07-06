@@ -1,0 +1,9 @@
+numpy
+opencv-python
+librosa
+scikit-learn
+pydantic
+pytest
+opencv-python
+numpy
+pydantic
