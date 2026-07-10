@@ -97,7 +97,7 @@ async def create_upload(uploadedFile : UploadFile,db : Session):
                 "upload_id" : existing_file.id,
                 "status" : existing_file.status,
                 "media_type": existing_file.media_type,
-                 "file_path":existing_file.file_path,
+                "file_path":existing_file.file_path,
                 "is_duplication":True,
                 "message":"File Already exists in the database."
             }
@@ -125,9 +125,5 @@ async def create_upload(uploadedFile : UploadFile,db : Session):
 def get_upload_status( upload_id:int,db: Session):
     query = select(Upload).where(Upload.id== upload_id)
     response = db.scalar(query)
-    if not response:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Uploaded file not found"
-        )
+
     return response
