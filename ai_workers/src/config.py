@@ -13,3 +13,5 @@ AUDIO_OUTPUT_DIR = OUTPUT_DIR / "audio"
 TEMP_DIR = BASE_DIR / "temp"
 
 PROCESSED_IMAGE_DIR = OUTPUT_DIR / "processed_images"
+
+FACES_OUTPUT_DIR = OUTPUT_DIR / "faces"

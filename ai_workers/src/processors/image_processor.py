@@ -89,6 +89,9 @@ def process_image(image_path: Path):
         "output_path": output
     }
 
+
+
+
 if __name__ == "__main__":
 
     sample_image = DATA_DIR / "sample_images" / "sample.jpg"
