@@ -1,7 +1,8 @@
 numpy
-opencv-python
+opencv-python<5
 librosa
 scikit-learn
+moviepy
 pydantic
 pytest
 opencv-python
