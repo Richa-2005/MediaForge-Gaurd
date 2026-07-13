@@ -3,86 +3,7 @@ from app.database.session import SessionLocal
 from sqlalchemy import select
 from app.models.upload import Upload, UploadStatus
 from app.services.analysis_service import save_analysis_result
-
-
-def mock_analysis(upload):
-    media_type = upload.media_type
-
-    if media_type == "text":
-        return {
-            "upload_id": upload.id,
-            "agent": "text",
-            "risk_score": 0.84,
-            "label": "misleading",
-            "confidence": 0.88,
-            "details": {
-                "transcript": "…",
-                "top_match_id": "kb_123",
-                "model_version": "v1.0"
-            },
-            "evidence":[
-                {
-                "similarity_score": 0.84,
-                }
-            ],
-            "explanation":"This is a mock analysis for text"
-        }
-    elif media_type == "audio":
-        return {
-            "upload_id": upload.id,
-            "agent": "audio",
-            "risk_score": 0.28,
-            "label": "authentic",
-            "confidence": 0.91,
-            "details": {
-                "duration_seconds": 14.7,
-                "model_version": "v1.0"
-            },
-            "evidence":[
-                {
-                "synthetic_voice_probability": 0.28,
-                }
-            ],
-            "explanation":"This is a mock analysis for audio"
-        }
-    
-    elif media_type == "video":
-        return {
-            "upload_id": upload.id,
-            "agent": "vision",
-            "risk_score": 0.68,
-            "label": "authentic",
-            "confidence": 0.71,
-            "details": {
-                "duration_seconds": 30.7,
-                "model_version": "v1.0"
-            },
-            "evidence":[
-                {
-                "synthetic_video_probability": 0.98,
-                }
-            ],
-            "explanation":"This is a mock analysis for video"
-        }
-    
-    return {
-        "upload_id": upload.id,
-        "agent": "vision",
-        "risk_score": 0.18,
-        "label": "authentic",
-        "confidence": 0.91,
-        "details": {
-            "model_version": "v1.0"
-        },
-        "evidence":[
-            {
-            "synthetic_image_probability": 0.19,
-            }
-        ],
-        "explanation":"This is a mock analysis for images"
-     }
-
-
+from app.services.processing_service import route_service
 
 @celery_app.task(name="process_upload")
 def process_upload(upload_id: int):
@@ -102,9 +23,7 @@ def process_upload(upload_id: int):
 
         print("Processing...")
        
-        result = mock_analysis(upload)
-        
-        analysis_row = save_analysis_result(result,db)
+        saved = route_service(upload, db)
 
         print("Processing complete!")
 
@@ -114,6 +33,7 @@ def process_upload(upload_id: int):
         return {
             "status": "completed",
             "upload_id": upload_id,
+            "artifacts_saved": len(saved)
         }
 
     except Exception as e:

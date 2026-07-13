@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-
+from pathlib import Path
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Media Sentinel"
@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
+
+    PROCESSING_DIR: Path = Path(BASE_DIR) / "storage" / "processing"
 
     class Config:
         env_file = ".env"
