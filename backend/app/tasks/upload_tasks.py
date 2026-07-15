@@ -1,14 +1,15 @@
 from app.core.celery_app import celery_app
 from app.database.session import SessionLocal
-from sqlalchemy import select
+from datetime import datetime, timezone
 from app.models.upload import Upload, UploadStatus
+from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
 from app.services.analysis_service import save_analysis_result
 from app.services.processing_service import route_service
 
 @celery_app.task(name="process_upload")
 def process_upload(upload_id: int):
     db = SessionLocal()
-
+    running = None
     try:
         upload = db.get(Upload, upload_id)
 
@@ -22,10 +23,30 @@ def process_upload(upload_id: int):
         db.commit()
 
         print("Processing...")
-       
+
+        running = ProcessingRun(
+            upload_id=upload_id,
+            status=RunStatus.RUNNING,
+            trigger=TriggerStatus.UPLOAD,
+            started_at=datetime.now(timezone.utc)
+        )
+        db.add(running)
+        db.commit()
+        db.refresh(running)
+        
         saved = route_service(upload, db)
 
         print("Processing complete!")
+        
+        running.status = RunStatus.COMPLETED
+        running.completed_at = datetime.now(timezone.utc)
+        running.duration_ms = int(
+            (running.completed_at - running.started_at).total_seconds() * 1000
+        )
+
+        db.commit()
+        db.refresh(running)
+
 
         upload.status = UploadStatus.COMPLETED
         db.commit()
@@ -42,6 +63,11 @@ def process_upload(upload_id: int):
         upload = db.get(Upload, upload_id)
         if upload is not None:
             upload.status = UploadStatus.FAILED
+            db.commit()
+        
+        if running is not None:
+            running.status = RunStatus.FAILED
+            running.completed_at = datetime.now(timezone.utc)
             db.commit()
 
         return {
