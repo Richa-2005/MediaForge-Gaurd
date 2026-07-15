@@ -54,7 +54,7 @@ def process_faces(image_path: Path, output_dir: Path):
     return {
         "face_count": len(faces),
         "bounding_boxes": [tuple(map(int, b)) for b in boxes],
-        "saved_faces": saved_paths,
+        "saved_faces": [str(path) for path in saved_paths],
     }
 
 

@@ -21,6 +21,19 @@ env/
 # AI generated outputs
 ai_workers/outputs/
 
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Generated AI outputs
+ai_workers/outputs/
+ai_workers/temp/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
 # OS files
 .DS_Store
 Thumbs.db
