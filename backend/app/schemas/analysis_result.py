@@ -1,6 +1,7 @@
 from pydantic import BaseModel, AfterValidator
 from typing import Any, Annotated
 from app.models.analysis_result import AgentName, Labels
+from datetime import datetime
 
 def in_range(value: float)->float:
     if value < 0.0 or value > 1.0:
@@ -17,6 +18,16 @@ class AnalysisResultCreate(BaseModel):
     evidence : list[dict[str, Any]] | None
     details : dict[str, Any] | None
 
-
+class AnalysisResultResponse(BaseModel):
+    id: int
+    upload_id: int
+    agent: AgentName
+    label: Labels
+    risk_score: float
+    confidence: float
+    explanation: str | None
+    evidence: list[dict[str, Any]] | None
+    details: dict[str, Any] | None
+    created_at: datetime
 
 

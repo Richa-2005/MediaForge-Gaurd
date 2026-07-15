@@ -5,6 +5,9 @@ from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
 from app.services.analysis_service import save_analysis_result
 from app.services.processing_service import route_service
+from app.services.execution_service import (
+    create_step, start_step, complete_step, fail_step
+)
 
 @celery_app.task(name="process_upload")
 def process_upload(upload_id: int):
@@ -27,14 +30,24 @@ def process_upload(upload_id: int):
         running = ProcessingRun(
             upload_id=upload_id,
             status=RunStatus.RUNNING,
-            trigger=TriggerStatus.UPLOAD,
+            trigger=RunTrigger.UPLOAD,
             started_at=datetime.now(timezone.utc)
         )
         db.add(running)
         db.commit()
         db.refresh(running)
+
+        media_preprocessing_step = create_step(
+            running.id,
+            "preprocessing",
+            db,
+        )
+
+        start_step(media_preprocessing_step, db)
         
         saved = route_service(upload, db)
+
+        complete_step(media_preprocessing_step, db)
 
         print("Processing complete!")
         
@@ -59,7 +72,7 @@ def process_upload(upload_id: int):
 
     except Exception as e:
         db.rollback()
-
+        fail_step(media_preprocessing_step, str(e), db)
         upload = db.get(Upload, upload_id)
         if upload is not None:
             upload.status = UploadStatus.FAILED
