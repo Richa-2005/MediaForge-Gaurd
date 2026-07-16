@@ -1,5 +1,6 @@
 from fastapi import UploadFile,HTTPException,status
 from app.core.config import settings
+from datetime import datetime, timezone
 import magic
 import os
 import shutil
@@ -9,6 +10,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.models.upload import Upload, UploadStatus
+from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
 from app.tasks.upload_tasks import process_upload
 
 async def validating_file(uploadedFile : UploadFile) -> str:
@@ -107,10 +109,19 @@ async def create_upload(uploadedFile : UploadFile,db : Session):
         
         #Queueing the file for processing 
         uploaded_file.status = UploadStatus.QUEUED
+
+        processing_run = ProcessingRun(
+            upload_id=uploaded_file.id,
+            status=RunStatus.RUNNING,
+            trigger=RunTrigger.UPLOAD,
+            started_at=datetime.now(timezone.utc),
+        )
+        db.add(processing_run)
         db.commit()
         db.refresh(uploaded_file)
+        db.refresh(processing_run)
 
-        process_upload.delay(uploaded_file.id)
+        process_upload.delay(uploaded_file.id, processing_run.id)
         
         return {
             "upload_id" : uploaded_file.id,
