@@ -9,6 +9,10 @@ from app.services.execution_service import (
     create_step, start_step, complete_step, fail_step
 )
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 @celery_app.task(name="process_upload")
 def process_upload(upload_id: int):
     db = SessionLocal()
@@ -25,7 +29,11 @@ def process_upload(upload_id: int):
         upload.status = UploadStatus.PROCESSING
         db.commit()
 
-        print("Processing...")
+        logger.info(
+            "Processing started | upload_id=%s media_type=%s",
+            upload.id,
+            upload.media_type,
+        )
 
         running = ProcessingRun(
             upload_id=upload_id,
@@ -44,12 +52,22 @@ def process_upload(upload_id: int):
         )
 
         start_step(media_preprocessing_step, db)
+
+        logger.info(
+            "Step started | run_id=%s step=%s",
+            running.id,
+            "media_preprocessing",
+        )
         
         saved = route_service(upload, db)
 
         complete_step(media_preprocessing_step, db)
 
-        print("Processing complete!")
+        logger.info(
+            "Processing completed | upload_id=%s artifacts=%s",
+            upload.id,
+            len(saved),
+        )
         
         running.status = RunStatus.COMPLETED
         running.completed_at = datetime.now(timezone.utc)
@@ -82,7 +100,11 @@ def process_upload(upload_id: int):
             running.status = RunStatus.FAILED
             running.completed_at = datetime.now(timezone.utc)
             db.commit()
-
+        
+        logger.exception(
+            "Processing failed | upload_id=%s",
+            upload_id,
+        )
         return {
             "status": "failed",
             "upload_id": upload_id,

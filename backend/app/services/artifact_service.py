@@ -1,6 +1,8 @@
 from app.models.processing_artifacts import ProcessingArtifact
 from sqlalchemy.orm import Session
 
+import logging
+logger = logging.getLogger(__name__)
 
 def save_artifacts(artifacts , db:Session):
     rows = []
@@ -15,13 +17,23 @@ def save_artifacts(artifacts , db:Session):
     try:
         db.add_all(rows)
         db.commit()
+
         
         for row in rows:
             db.refresh(row)
 
+        logger.info(
+            "Saved %d artifacts | upload_id=%s",
+            len(rows),
+            rows[0].upload_id,
+        )
+
         return rows
     except Exception as e:
         db.rollback()
+        logger.exception(
+            "Artifact persistence failed"
+        )
         raise
 
 

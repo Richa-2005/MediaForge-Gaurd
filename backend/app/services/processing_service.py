@@ -5,8 +5,17 @@ from app.services.processor_adapter import (
 from app.services.artifact_service import save_artifacts
 from sqlalchemy.orm import Session
 
+import logging
+logger = logging.getLogger(__name__)
+
 def route_service(upload, db: Session):
     media_type = upload.media_type
+
+    logger.info(
+        "Routing media | upload_id=%s media_type=%s",
+        upload.id,
+        upload.media_type,
+    )
     
     if media_type == "video":
         artifacts = process_video_adapter(upload)

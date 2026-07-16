@@ -3,6 +3,9 @@ from pathlib import Path
 
 from app.core.config import settings
 
+import logging
+logger = logging.getLogger(__name__)
+
 AI_WORKERS_DIR = Path(__file__).resolve().parents[3] / "ai_workers"
 if str(AI_WORKERS_DIR) not in sys.path:
     sys.path.insert(0, str(AI_WORKERS_DIR))
@@ -54,6 +57,11 @@ def process_video_adapter(upload):
                 "details": {}
             }
         )
+    logger.info(
+        "Extracted %d frames | upload_id=%s",
+        len(frame_paths),
+        upload.id,
+    )
     return artifacts
 
 def process_image_adapter(upload):
@@ -75,6 +83,12 @@ def process_image_adapter(upload):
         },
     }
 
+    logger.info(
+        "Processed image | upload_id=%s path=%s",
+        upload.id,
+        result["output_path"],
+    )
+
     return [artifacts]
 
 def process_audio_adapter(upload):
@@ -83,7 +97,11 @@ def process_audio_adapter(upload):
     audio_path = Path(upload.file_path)
 
     final_path = extract_audio(audio_path,output_dir)
-
+    logger.info(
+        "Audio extracted | upload_id=%s path=%s",
+        upload.id,
+        final_path,
+    )
     return [
         {
             "upload_id": upload.id,

@@ -4,6 +4,9 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.models import create_tables
 
+from app.core.logging_config import configure_logging
+configure_logging()
+
 app = FastAPI(title=settings.PROJECT_NAME)
 
 @app.on_event("startup")

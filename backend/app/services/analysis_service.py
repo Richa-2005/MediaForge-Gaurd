@@ -5,6 +5,9 @@ from sqlalchemy import select
 from app.models.analysis_result import AnalysisResult
 from pydantic import ValidationError
 
+import logging
+logger = logging.getLogger(__name__)
+
 def persist_analysis_result(analysis: AnalysisResultCreate, db: Session):
     try:
         row = AnalysisResult(
@@ -22,11 +25,21 @@ def persist_analysis_result(analysis: AnalysisResultCreate, db: Session):
         db.commit()
         db.refresh(row)
 
+        logger.info(
+            "Analysis stored | upload_id=%s agent=%s",
+            analysis.upload_id,
+            analysis.agent,
+        )
+
         return row
 
     except Exception as e:
         db.rollback()
+        logger.exception(
+            "Failed to store analysis | upload_id=%s",
+             analysis.upload_id,
 
+        )
         raise
 
 def save_analysis_result(analysis: dict, db: Session):

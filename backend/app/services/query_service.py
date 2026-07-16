@@ -7,6 +7,9 @@ from app.models.processing_artifacts import ProcessingArtifact
 from app.models.processing_run import ProcessingRun
 from app.models.processing_step import ProcessingStep
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def build_upload_view(upload_id: int, db: Session):
     """
