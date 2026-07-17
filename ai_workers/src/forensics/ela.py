@@ -121,18 +121,16 @@ class ELAAnalyzer(BaseForensicAnalyzer):
         return Evidence(
             method="ELA",
             score=score,
-            confidence=round(
-                confidence,
-                4,
-            ),
-            summary="JPEG compression inconsistencies analyzed using Error Level Analysis.",
-            artifact_path=str(artifact_path)
-            if artifact_path
-            else None,
+            confidence=round(confidence, 4),
+            summary="Detected JPEG compression inconsistencies using Error Level Analysis.",
+            artifact_path=str(artifact_path) if artifact_path else None,
             metadata={
-                "jpeg_quality": self.jpeg_quality,
-                "scale": self.scale,
                 "algorithm": "Error Level Analysis",
+                "jpeg_quality": self.jpeg_quality,
+                "scale_factor": self.scale,
+                "ela_mean": round(float(ela_image.mean()), 2),
+                "ela_max": int(ela_image.max()),
+                "ela_min": int(ela_image.min()),
             },
         )
 

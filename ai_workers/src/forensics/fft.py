@@ -74,10 +74,14 @@ class FFTAnalyzer(BaseForensicAnalyzer):
             method="FFT Analysis",
             score=score,
             confidence=round(confidence, 4),
-            summary="Frequency-domain characteristics analyzed.",
+            summary="Analyzed image frequency-domain characteristics using a 2D Fast Fourier Transform.",
             artifact_path=str(artifact_path) if artifact_path else None,
             metadata={
-                "algorithm": "2D FFT",
+                "algorithm": "2D Fast Fourier Transform",
+                "spectrum_mean": round(float(spectrum.mean()), 2),
+                "spectrum_std": round(float(spectrum.std()), 2),
+                "spectrum_max": int(spectrum.max()),
+                "spectrum_min": int(spectrum.min()),
             },
         )
 

@@ -1,10 +1,10 @@
-from src.schemas.agent_result import AgentResult
+from src.schemas.analysis_result import AnalysisResult
 from src.schemas.evidence import Evidence
 
 
 class VisionDecisionEngine:
     """
-    Combines forensic evidence into one final decision.
+    Aggregates vision forensic evidence into a final result.
     """
 
     WEIGHTS = {
@@ -16,60 +16,64 @@ class VisionDecisionEngine:
 
     def evaluate(
         self,
-        upload_id: str,
         evidence: list[Evidence],
-        face_data: dict,
-    ) -> AgentResult:
+    ) -> AnalysisResult:
 
-        weighted_score = 0.0
-
-        for item in evidence:
-            weighted_score += (
-                item.score *
-                self.WEIGHTS.get(item.method, 0.0)
+        if not evidence:
+            return AnalysisResult(
+                label="unknown",
+                risk_score=0.0,
+                confidence=0.0,
+                explanation="No visual evidence available.",
+                evidence=[],
             )
 
-        risk_score = round(
-            min(weighted_score, 1.0),
-            4,
+        weighted_score = 0.0
+        total_weight = 0.0
+
+        for item in evidence:
+
+            weight = self.WEIGHTS.get(
+                item.method,
+                0.0,
+            )
+
+            weighted_score += item.score * weight
+            total_weight += weight
+
+        risk_score = (
+            weighted_score / total_weight
+            if total_weight > 0
+            else 0.0
         )
 
-        confidence = round(
-            sum(e.confidence for e in evidence) /
-            len(evidence),
-            4,
-        )
+        confidence = sum(
+            item.confidence
+            for item in evidence
+        ) / len(evidence)
 
-        if risk_score >= 0.70:
-            label = "manipulated"
+        # ---------- Standardized labels ----------
 
-        elif risk_score >= 0.45:
-            label = "uncertain"
-
+        if risk_score >= 0.50:
+            label = "fake"
         else:
-            label = "authentic"
+            label = "real"
 
         strongest = max(
             evidence,
-            key=lambda e: e.score,
+            key=lambda item: item.score,
         )
 
         explanation = (
-            f"{strongest.method} produced the strongest forensic "
-            f"signal (score={strongest.score:.2f})."
+            f"{strongest.method} detected the strongest "
+            f"forensic signal "
+            f"(score={strongest.score:.2f})."
         )
 
-        return AgentResult(
-            upload_id=upload_id,
-            agent="vision",
+        return AnalysisResult(
             label=label,
-            risk_score=risk_score,
-            confidence=confidence,
+            risk_score=round(risk_score, 4),
+            confidence=round(confidence, 4),
             explanation=explanation,
             evidence=evidence,
-            details={
-                "face_count": face_data["face_count"],
-                "bounding_boxes": face_data["bounding_boxes"],
-                "saved_faces": face_data["saved_faces"],
-            },
         )
