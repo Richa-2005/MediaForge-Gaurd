@@ -82,6 +82,8 @@ def mock_analysis(upload):
         "explanation":"This is a mock analysis for images"
      }
 
+
+
 @celery_app.task(name="process_upload")
 def process_upload(upload_id: int):
     db = SessionLocal()

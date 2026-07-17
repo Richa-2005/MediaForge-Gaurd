@@ -38,3 +38,43 @@ Thumbs.db
 .DS_Store
 Thumbs.db
 "@ | Set-Content .gitignore
+
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Pytest
+.pytest_cache/
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis
+dump.rdb
+
+# AI generated outputs
+ai_workers/outputs/
+
+# Backend uploads
+backend/storage/uploads/
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+.media_sentinel.db
