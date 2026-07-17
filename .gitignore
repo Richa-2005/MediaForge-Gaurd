@@ -27,9 +27,15 @@ dump.rdb
 
 # AI generated outputs
 ai_workers/outputs/
+ai_workers/temp/
 
-# Backend uploads
+# Backend generated storage
 backend/storage/uploads/
+backend/storage/processing/
+
+# Logs
+logs/
+backend/logs/
 
 # OS files
 .DS_Store
