@@ -1,19 +1,13 @@
-
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from src.schemas.evidence import Evidence
 
 
 @dataclass
-class AgentResult:
+class AnalysisResult:
     """
-    Output returned by every AI agent.
+    Final decision produced by an AI decision engine.
     """
-
-    upload_id: str
-
-    agent: str
 
     label: str
 
@@ -24,5 +18,3 @@ class AgentResult:
     explanation: str
 
     evidence: list[Evidence]
-
-    details: dict[str, Any] = field(default_factory=dict)
