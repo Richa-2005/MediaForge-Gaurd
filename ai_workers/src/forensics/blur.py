@@ -93,11 +93,12 @@ class BlurAnalyzer(BaseForensicAnalyzer):
             score=score,
             confidence=round(confidence, 4),
             summary="Estimated image sharpness using the Variance of the Laplacian.",
-            artifact_path=str(artifact_path)
-            if artifact_path
-            else None,
+            artifact_path=str(artifact_path) if artifact_path else None,
             metadata={
                 "algorithm": "Variance of Laplacian",
+                "laplacian_variance": round(float(laplacian.var()), 2),
+                "blur_score": score,
+                "visualization": "laplacian_response",
             },
         )
 

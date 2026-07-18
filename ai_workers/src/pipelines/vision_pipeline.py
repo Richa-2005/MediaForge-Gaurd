@@ -5,11 +5,12 @@ from src.forensics.ela import ELAAnalyzer
 from src.forensics.fft import FFTAnalyzer
 from src.forensics.noise import NoiseAnalyzer
 from src.processors.face_processor import process_faces
+from src.schemas.evidence import Evidence
 
 
 class VisionPipeline:
     """
-    Orchestrates all vision preprocessing and forensic analyzers.
+    Executes the complete vision analysis pipeline.
     """
 
     def __init__(self):
@@ -25,12 +26,17 @@ class VisionPipeline:
         self,
         image_path: Path,
         output_dir: Path,
-    ) -> dict:
+    ) -> tuple[list[Evidence], dict]:
         """
-        Runs the complete vision pipeline.
+        Runs all available vision analyzers.
 
-        Returns:
-            dict containing face analysis and forensic evidence.
+        Returns
+        -------
+        tuple[list[Evidence], dict]
+            (
+                forensic evidence,
+                face metadata,
+            )
         """
 
         output_dir.mkdir(
@@ -38,16 +44,12 @@ class VisionPipeline:
             exist_ok=True,
         )
 
-        # ---------- Face Detection ----------
-
         face_results = process_faces(
             image_path=image_path,
             output_dir=output_dir / "faces",
         )
 
-        # ---------- Forensic Analysis ----------
-
-        forensic_results = []
+        evidence: list[Evidence] = []
 
         for analyzer in self.analyzers:
 
@@ -62,26 +64,26 @@ class VisionPipeline:
                 f"{artifact_name}.png"
             )
 
-            evidence = analyzer.analyze(
-                image_path=image_path,
-                artifact_path=artifact_path,
+            evidence.append(
+                analyzer.analyze(
+                    image_path=image_path,
+                    artifact_path=artifact_path,
+                )
             )
 
-            forensic_results.append(evidence)
-
-        return {
-            "faces": face_results,
-            "forensics": forensic_results,
-        }
+        return evidence, face_results
 
 
 if __name__ == "__main__":
 
     pipeline = VisionPipeline()
 
-    result = pipeline.run(
+    evidence, faces = pipeline.run(
         image_path=Path("data/sample_images/sample_img.jpg"),
         output_dir=Path("outputs/pipeline"),
     )
 
-    print(result)
+    print(faces)
+
+    for item in evidence:
+        print(item)

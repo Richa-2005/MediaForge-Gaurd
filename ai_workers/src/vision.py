@@ -1,6 +1,21 @@
 # vision.py
-def analyze_image(image_path: str):
+from pathlib import Path
+
+from src.agents.vision_agent import VisionAgent
+from src.schemas.agent_result import AgentResult
+
+
+def analyze_image(
+    image_path: str | Path,
+) -> AgentResult:
     """
-    Placeholder for deepfake image detection.
+    Public helper for vision analysis.
+
+    This function delegates image analysis to the VisionAgent.
     """
-    pass
+
+    agent = VisionAgent()
+
+    return agent.analyze(
+        Path(image_path)
+    )

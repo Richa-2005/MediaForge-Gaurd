@@ -75,8 +75,12 @@ class NoiseAnalyzer(BaseForensicAnalyzer):
             summary="Analyzed high-frequency residual noise patterns.",
             artifact_path=str(artifact_path) if artifact_path else None,
             metadata={
-                "kernel_size": self.blur_kernel,
                 "algorithm": "Gaussian High-Pass Residual",
+                "gaussian_kernel": self.blur_kernel,
+                "noise_mean": round(float(residual.mean()), 2),
+                "noise_std": round(float(residual.std()), 2),
+                "noise_max": int(residual.max()),
+                "noise_min": int(residual.min()),
             },
         )
 
