@@ -21,7 +21,7 @@ class VisionDecisionEngine:
 
         if not evidence:
             return AnalysisResult(
-                label="unknown",
+                label="uncertain",
                 risk_score=0.0,
                 confidence=0.0,
                 explanation="No visual evidence available.",
@@ -54,10 +54,11 @@ class VisionDecisionEngine:
 
         # ---------- Standardized labels ----------
 
-        if risk_score >= 0.50:
-            label = "fake"
-        else:
-            label = "real"
+        label = (
+            "manipulated"
+            if risk_score >= 0.5
+            else "authentic"
+        )
 
         strongest = max(
             evidence,

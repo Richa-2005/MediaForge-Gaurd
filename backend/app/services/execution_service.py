@@ -31,7 +31,7 @@ def start_step(
         raise ValueError("The process has not been stored as a step yet.")
     try:
         step.status = StepStatus.RUNNING
-        step.started_at = datetime.now(timezone.utc)
+        step.started_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.commit()
         db.refresh(step)
     except Exception as e:
@@ -46,7 +46,7 @@ def complete_step(
         raise ValueError("The process has not been stored as a step yet.")
     try:
         step.status = StepStatus.COMPLETED
-        step.completed_at = datetime.now(timezone.utc)
+        step.completed_at =datetime.now(timezone.utc).replace(tzinfo=None)
         step.duration_ms =  int(
             (step.completed_at - step.started_at).total_seconds() * 1000
         )
@@ -67,10 +67,13 @@ def fail_step(
         raise ValueError("The process has not been stored as a step yet.")
     try:
         step.status = StepStatus.FAILED
-        step.completed_at = datetime.now(timezone.utc)
-        step.duration_ms =  int(
-            (step.completed_at - step.started_at).total_seconds() * 1000
-        )
+        step.completed_at = datetime.now(timezone.utc).replace(tzinfo=None).replace(tzinfo=None)
+        if step.started_at is not None:
+            step.duration_ms =  int(
+                (step.completed_at - step.started_at).total_seconds() * 1000
+            )
+        else:
+            step.duration_ms  = 0
         step.error_message = error
         db.commit()
         db.refresh(step)

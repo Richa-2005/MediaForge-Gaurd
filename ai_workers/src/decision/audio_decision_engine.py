@@ -14,7 +14,7 @@ class AudioDecisionEngine:
 
         if not evidence:
             return AnalysisResult(
-                label="unknown",
+                label="uncertain",
                 risk_score=0.0,
                 confidence=0.0,
                 explanation="No audio evidence available.",
@@ -31,7 +31,11 @@ class AudioDecisionEngine:
             for item in evidence
         ) / len(evidence)
 
-        label = "fake" if risk_score >= 0.5 else "real"
+        label = (
+            "manipulated"
+            if risk_score >= 0.5
+            else "authentic"
+        )
 
         return AnalysisResult(
             label=label,

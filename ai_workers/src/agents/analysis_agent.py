@@ -12,15 +12,13 @@ class AnalysisAgent:
     aggregates their results.
     """
 
-    def __init__(self):
-
+    def __init__(self) -> None:
         self.vision_agent = VisionAgent()
-
         self.audio_agent = AudioAgent()
 
     def analyze(
         self,
-        upload_id: str,
+        upload_id: int,
         media_path: Path,
         media_type: str,
     ) -> dict:
@@ -31,10 +29,6 @@ class AnalysisAgent:
         - image
         - video
         - audio
-
-        Returns
-        -------
-        dict
         """
 
         results = {
@@ -43,34 +37,30 @@ class AnalysisAgent:
             "audio": None,
         }
 
-        media_type = media_type.lower()
+        normalized_media_type = media_type.lower()
 
-        if media_type == "image":
-
+        if normalized_media_type == "image":
             results["vision"] = self.vision_agent.analyze(
-                media_path
+                media_path,
+                upload_id=upload_id,
             )
 
-        elif media_type == "video":
-
-            results["vision"] = self.vision_agent.analyze(
-                media_path
+        elif normalized_media_type == "video":
+            raise NotImplementedError(
+                "Video analysis is not ready yet. "
+                "The vision pipeline requires extracted image frames, "
+                "not the raw video file."
             )
 
+        elif normalized_media_type == "audio":
             results["audio"] = self.audio_agent.analyze(
-                media_path
-            )
-
-        elif media_type == "audio":
-
-            results["audio"] = self.audio_agent.analyze(
-                media_path
+                media_path,
+                upload_id=upload_id,
             )
 
         else:
-
             raise ValueError(
-                f"Unsupported media type: {media_type}"
+                f"Unsupported media type: {normalized_media_type}"
             )
 
         return results

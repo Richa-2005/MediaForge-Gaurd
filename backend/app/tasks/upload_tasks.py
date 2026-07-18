@@ -4,14 +4,22 @@ from datetime import datetime, timezone
 from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus
 from app.models.processing_step import ProcessingStep, StepStatus
+from app.models.processing_artifacts import ProcessingArtifact
 from app.services.processing_service import route_service
 from app.services.execution_service import (
     create_step, start_step, complete_step, fail_step
 )
+from app.schemas.analysis_result import AnalysisResultCreate,AgentName
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
-
+from pathlib import Path
 import logging
+
+from ai_workers.src.agents.analysis_agent import AnalysisAgent
+from ai_workers.src.schemas.agent_result import AgentResult
+from ai_workers.src.schemas.analysis_result import AnalysisResult
+
+from app.services.analysis_service import save_analysis_result
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +28,6 @@ RETRYABLE_EXCEPTIONS = (
     ConnectionError,
     TimeoutError,
 )
-
 
 @celery_app.task(
     name="process_upload",
@@ -31,6 +38,7 @@ def process_upload(self, upload_id: int, run_id: int):
     db = SessionLocal()
     running = None
     media_preprocessing_step = None
+    saved = []
 
     try:
         upload = db.get(Upload, upload_id)
@@ -82,12 +90,70 @@ def process_upload(self, upload_id: int, run_id: int):
         if media_preprocessing_step.status != StepStatus.COMPLETED:
             saved = route_service(upload, db)
             complete_step(media_preprocessing_step, db)
-            
+
         else:
             logger.info(
                 "Skipping completed preprocessing | run_id=%s",
                 run_id,
             )
+
+            saved = []
+        
+        processed_image_path = None
+
+        query = select(ProcessingArtifact).where(
+            ProcessingArtifact.upload_id == upload_id
+        )
+        saved = db.scalars(query).all()
+
+        if upload.media_type == "image":
+            processed_image = next(
+                (
+                    artifact
+                    for artifact in saved
+                    if artifact.artifact_type == "processed_image"
+                    and artifact.file_path
+                ),
+                None,
+            )
+
+            if processed_image is None:
+                raise ValueError(
+                    f"No processed image artifact found for upload {upload.id}."
+                )
+
+            processed_image_path = Path(processed_image.file_path)
+
+            if not processed_image_path.exists():
+                raise FileNotFoundError(
+                    f"Processed image file not found: {processed_image_path}"
+                )
+        
+            analysis_agent = AnalysisAgent()
+            result_output = analysis_agent.analyze(
+                                upload_id=upload_id,
+                                media_path=processed_image_path,
+                                media_type="image",
+                            )
+            result : AgentResult = result_output["vision"]
+
+            if result is None:
+                raise ValueError(f"Could Not analyze: {upload_id}.")
+            
+            result_analysis : AnalysisResult = result.analysis
+            extracted_analysis = {
+                "upload_id":upload_id,
+                "agent":AgentName.VISION,
+                "label":result_analysis.label,
+                "risk_score":result_analysis.risk_score,
+                "confidence":result_analysis.confidence,
+                "explanation":result_analysis.explanation,
+                "evidence":[evidence.model_dump() for evidence in result_analysis.evidence],
+                "details":result.details
+            }
+
+            saved_result = save_analysis_result(extracted_analysis,db)
+
 
         logger.info(
             "Processing completed | upload_id=%s artifacts=%s",
@@ -102,7 +168,7 @@ def process_upload(self, upload_id: int, run_id: int):
         )
         
         running.status = RunStatus.COMPLETED
-        running.completed_at = datetime.now(timezone.utc)
+        running.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         running.duration_ms = int(
             (running.completed_at - running.started_at).total_seconds() * 1000
         )
@@ -133,7 +199,7 @@ def process_upload(self, upload_id: int, run_id: int):
 
             if running is not None:
                 running.status = RunStatus.FAILED
-                running.completed_at = datetime.now(timezone.utc)
+                running.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
                 running.duration_ms = int(
                     (running.completed_at - running.started_at).total_seconds()
                     * 1000
@@ -170,7 +236,7 @@ def process_upload(self, upload_id: int, run_id: int):
         
         if running is not None:
             running.status = RunStatus.FAILED
-            running.completed_at = datetime.now(timezone.utc)
+            running.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
             running.duration_ms = int(
                 (running.completed_at - running.started_at).total_seconds()
                 * 1000

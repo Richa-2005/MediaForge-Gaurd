@@ -20,7 +20,8 @@ class VisionAgent:
     def analyze(
         self,
         image_path: Path,
-    ) -> AgentResult:
+        upload_id: int,
+) -> AgentResult:
 
         evidence, face_data = self.pipeline.run(
             image_path,
@@ -32,7 +33,7 @@ class VisionAgent:
         )
 
         return AgentResult(
-            upload_id=image_path.stem,
+            upload_id=upload_id,
             agent="vision",
             analysis=analysis,
             details={
@@ -50,7 +51,8 @@ if __name__ == "__main__":
     result = agent.analyze(
         DATA_DIR
         / "sample_images"
-        / "sample_img.jpg"
+        / "sample_img.jpg",
+        upload_id=1,
     )
 
     print(result)

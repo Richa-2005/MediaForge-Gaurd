@@ -10,10 +10,7 @@ class AgentResult:
     Final response returned by every AI agent.
     """
 
-    upload_id: str
-
+    upload_id: int
     agent: str
-
     analysis: AnalysisResult
-
     details: dict[str, Any] | None = None
