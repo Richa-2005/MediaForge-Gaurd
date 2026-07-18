@@ -1,15 +1,24 @@
 from pathlib import Path
 
 from src.audio_forensics.spectral import SpectralAnalyzer
-from src.schemas import evidence
 from src.audio_forensics.metadata import MetadataAnalyzer
 from src.processors.audio_processor import extract_audio
 from src.schemas.evidence import Evidence
 from src.audio_forensics.silence import SilenceAnalyzer
 from src.audio_forensics.mfcc import MFCCAnalyzer
-from src.schemas.analysis_result import AnalysisResult
 from src.audio_forensics.transcription import TranscriptionAnalyzer
 from src.audio_forensics.quality import QualityAnalyzer
+
+
+AUDIO_EXTENSIONS = {
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".aac",
+    ".flac",
+    ".ogg",
+}
+
 
 class AudioPipeline:
     """
@@ -17,32 +26,40 @@ class AudioPipeline:
     """
 
     def __init__(self):
-
         self.analyzers = [
-        MetadataAnalyzer(),
-        SilenceAnalyzer(),
-        SpectralAnalyzer(),
-        MFCCAnalyzer(),
-        QualityAnalyzer(),
-        TranscriptionAnalyzer()
-    ]
+            MetadataAnalyzer(),
+            SilenceAnalyzer(),
+            SpectralAnalyzer(),
+            MFCCAnalyzer(),
+            QualityAnalyzer(),
+            TranscriptionAnalyzer(),
+        ]
 
     def run(
         self,
-        video_path: Path,
+        media_path: Path,
         output_dir: Path,
     ) -> list[Evidence]:
         """
         Runs all available audio analyzers.
 
-        Returns
-        -------
-        list[Evidence]
+        Accepts either:
+        - a direct audio file
+        - a video file containing an audio track
         """
 
-        processed = extract_audio(video_path, output_dir)
+        media_path = Path(media_path)
 
-        audio_path = Path(processed)
+        if not media_path.exists():
+            raise FileNotFoundError(
+                f"Audio pipeline input file not found: {media_path}"
+            )
+
+        if media_path.suffix.lower() in AUDIO_EXTENSIONS:
+            audio_path = media_path
+        else:
+            processed = extract_audio(media_path, output_dir)
+            audio_path = Path(processed)
 
         evidence: list[Evidence] = []
 
@@ -62,7 +79,6 @@ class AudioPipeline:
 
 
 if __name__ == "__main__":
-
     from src.config import (
         DATA_DIR,
         AUDIO_OUTPUT_DIR,

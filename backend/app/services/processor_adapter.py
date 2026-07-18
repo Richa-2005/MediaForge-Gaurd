@@ -10,15 +10,15 @@ AI_WORKERS_DIR = Path(__file__).resolve().parents[3] / "ai_workers"
 if str(AI_WORKERS_DIR) not in sys.path:
     sys.path.insert(0, str(AI_WORKERS_DIR))
 
-from src.processors.video_processor import (
+from ai_workers.src.processors.video_processor import (
     get_video_metadata, 
     extract_frames
 )
-from src.processors.image_processor import (
+from ai_workers.src.processors.image_processor import (
     process_image
 )
 
-from src.processors.audio_processor import (
+from ai_workers.src.processors.audio_processor import (
     extract_audio
 )
 
@@ -92,22 +92,25 @@ def process_image_adapter(upload):
     return [artifacts]
 
 def process_audio_adapter(upload):
-    output_dir = get_output_dir(upload,"audio")
-    
     audio_path = Path(upload.file_path)
 
-    final_path = extract_audio(audio_path,output_dir)
+    if not audio_path.exists():
+        raise FileNotFoundError(
+            f"Uploaded audio file not found: {audio_path}"
+        )
+
     logger.info(
-        "Audio extracted | upload_id=%s path=%s",
+        "Audio prepared | upload_id=%s path=%s",
         upload.id,
-        final_path,
+        audio_path,
     )
+
     return [
         {
             "upload_id": upload.id,
             "artifact_type": "processed_audio",
-            "file_path": str(final_path),
-            "details": {}
+            "file_path": str(audio_path),
+            "details": {},
         }
     ]
 

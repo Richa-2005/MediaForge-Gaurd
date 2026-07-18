@@ -4,6 +4,12 @@ from app.services.processor_adapter import (
 )
 from app.services.artifact_service import save_artifacts
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+
+from app.models.processing_step import ProcessingStep, StepStatus
+from app.services.execution_service import (
+    create_step, start_step, complete_step
+)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -33,3 +39,50 @@ def route_service(upload, db: Session):
         return saved
 
     return None
+
+
+def run_preprocessing(upload, run, db : Session):
+
+        media_preprocessing_step = db.scalar(
+            select(ProcessingStep).where(
+                ProcessingStep.processing_run_id == run.id,
+                ProcessingStep.step_name == "preprocessing",
+            )
+        )
+
+        if media_preprocessing_step is None:
+            media_preprocessing_step = create_step(
+                run.id,
+                "preprocessing",
+                db,
+            )
+
+        if media_preprocessing_step.status == StepStatus.PENDING:
+            start_step(media_preprocessing_step, db)
+
+            logger.info(
+                "Step started | run_id=%s step=%s",
+                run.id,
+                "media_preprocessing",
+            )
+        
+        if media_preprocessing_step.status != StepStatus.COMPLETED:
+            saved = route_service(upload, db)
+            complete_step(media_preprocessing_step, db)
+
+            logger.info(
+                "Step completed | run_id=%s step=%s artifacts=%s",
+                run.id,
+                "preprocessing",
+                len(saved),
+            )
+
+        else:
+            logger.info(
+                "Skipping completed preprocessing | run_id=%s",
+                run.id,
+            )
+
+            saved = []
+
+        return saved, media_preprocessing_step

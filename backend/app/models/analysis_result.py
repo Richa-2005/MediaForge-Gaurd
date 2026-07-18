@@ -10,6 +10,7 @@ from app.models.base import Base
 class AgentName(str, enum.Enum):
     VISION = "vision"
     AUDIO = "audio"
+    VIDEO = "video"
     TEXT = "text"
     SUPERVISOR = "supervisor"
 
