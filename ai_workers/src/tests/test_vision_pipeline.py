@@ -26,7 +26,7 @@ def main():
 
     try:
 
-        result = agent.analyze(sample_image)
+        result = agent.analyze(sample_image, upload_id=1)
 
         print("\n✓ Vision pipeline completed successfully!\n")
 

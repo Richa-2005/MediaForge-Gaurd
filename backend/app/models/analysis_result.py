@@ -22,6 +22,11 @@ class Labels(str, enum.Enum):
     UNCERTAIN = "uncertain"
     PENDING = "pending"
 
+class ExplanationStatus(str,enum.Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
 
 class AnalysisResult(Base):
     __tablename__ = "analysis_results"
@@ -78,3 +83,35 @@ class AnalysisResult(Base):
         nullable=False,
     )
 
+    report: Mapped[dict[str, Any] | None] = mapped_column(
+            JSON,
+            nullable=True,
+        )
+    report_markdown: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    summary: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    explanation_status: Mapped[ExplanationStatus] = mapped_column(
+        Enum(
+            ExplanationStatus,
+            values_callable=lambda status: [
+                st.value for st in status
+            ],
+            native_enum=False,
+            create_constraint=True,
+            name="explanation_status",
+        ),
+        nullable=False,
+        default = ExplanationStatus.PENDING
+    )
+
+    explanation_generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )

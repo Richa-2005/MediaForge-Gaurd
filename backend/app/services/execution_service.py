@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from app.models.processing_run import RunStatus
 from app.models.upload import Upload, UploadStatus
-
+from app.services.llm.report_service import generate_report
 
 import logging
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ def skip_step(
         raise
 
 
-def complete_processing(upload, running, db: Session):
+def complete_processing(saved_analysis,upload, running, db: Session):
 
     running.status = RunStatus.COMPLETED
     running.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -124,6 +124,14 @@ def complete_processing(upload, running, db: Session):
         running.id,
         running.duration_ms,
     )
+
+    try:
+        generate_report(saved_analysis.id, db)
+    except Exception:
+        logger.exception(
+            "Unable to generate LLM report for analysis_id=%s",
+            saved_analysis.id,
+        )
 
     return running
 

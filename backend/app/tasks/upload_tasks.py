@@ -3,7 +3,7 @@ from app.database.session import SessionLocal
 from datetime import datetime, timezone
 from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus
-from app.services.execution_service import fail_step, complete_processing, fail_processing
+from app.services.execution_service import complete_processing, fail_processing
 from app.services.analysis_service import run_analysis
 from sqlalchemy.exc import OperationalError
 import logging
@@ -63,7 +63,7 @@ def process_upload(self, upload_id: int, run_id: int):
             db,
         )
         
-        complete_processing(upload,running,db)
+        complete_processing(saved_result,upload,running,db)
 
 
         return {

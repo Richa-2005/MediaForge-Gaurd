@@ -1,5 +1,7 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
+from pydantic import SecretStr
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Media Sentinel"
@@ -24,8 +26,14 @@ class Settings(BaseSettings):
 
     PROCESSING_DIR: Path = Path(BASE_DIR) / "storage" / "processing"
 
-    class Config:
-        env_file = ".env"
+    LLM_PROVIDER: str
+    GROQ_API_KEY: SecretStr
+    OLLAMA_BASE_URL: str
 
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parents[2] / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 settings = Settings()
