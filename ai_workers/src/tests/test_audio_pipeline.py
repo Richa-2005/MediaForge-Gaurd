@@ -24,7 +24,7 @@ def main():
     agent = AudioAgent()
 
     try:
-        result = agent.analyze(sample_video, upload_id=1)
+        result = agent.analyze(sample_video , upload_id=1)
 
         print("\n✓ Audio pipeline completed successfully!\n")
 
