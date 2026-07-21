@@ -23,7 +23,7 @@ def main():
 
         result = agent.analyze(
             sample,
-            upload_id="demo_text",
+            upload_id=1,
         )
 
         print("\n✓ FactCheck pipeline completed successfully!\n")

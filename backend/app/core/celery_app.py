@@ -1,5 +1,6 @@
 from app.core.config import settings
 from celery import Celery
+import sys
 
 celery_app = Celery(
     "mediaforge-guard",
@@ -15,4 +16,8 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
+    # Native CV/ML libraries can abort a forked process on macOS.
+    # The solo pool avoids unsafe post-fork native initialization.
+    worker_pool="solo" if sys.platform == "darwin" else "prefork",
+    worker_concurrency=1 if sys.platform == "darwin" else None,
 )

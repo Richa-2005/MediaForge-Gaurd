@@ -17,7 +17,7 @@ class TextAgent:
     def analyze(
         self,
         text: str,
-        upload_id: str = "text",
+        upload_id: int,
     ) -> AgentResult:
 
         evidence = self.pipeline.run(text)
@@ -60,6 +60,8 @@ if __name__ == "__main__":
 
     agent = TextAgent()
 
-    result = agent.analyze(sample)
-
+    result = agent.analyze(
+        sample,
+        upload_id=1,
+    )
     print(result)

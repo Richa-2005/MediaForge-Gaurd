@@ -17,9 +17,7 @@ def supervisor(model_results : list[AnalysisResultCreate]) -> AnalysisResultCrea
     confi_label = {
         "manipulated":[],
         "authentic":[],
-        "misleading":[],
         "uncertain":[],
-        "pending":[] 
     }
 
     weighted_risk = 0
@@ -61,10 +59,6 @@ def supervisor(model_results : list[AnalysisResultCreate]) -> AnalysisResultCrea
     elif 0.30 < weighted_risk <= 0.55:
         final_result["label"] =Labels.UNCERTAIN
         final_result["confidence"] = confi_label["uncertain"]
-    
-    elif 0.55 < weighted_risk <= 0.80:
-        final_result["label"] = Labels.MISLEADING
-        final_result["confidence"] = confi_label["misleading"]
     
     else:
         final_result["label"] = Labels.MANIPULATED

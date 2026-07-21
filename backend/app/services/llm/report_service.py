@@ -1,51 +1,68 @@
-from app.services.llm.graph import explanation_graph
-from app.models.analysis_result import ExplanationStatus
-from sqlalchemy.orm import Session
-from app.models.analysis_result import AnalysisResult
 from datetime import datetime, timezone
-
 import logging
+
+from sqlalchemy.orm import Session
+
+from app.models.analysis_result import (
+    AnalysisResult,
+    ExplanationStatus,
+)
+from app.services.llm.graph import explanation_graph
+
+
 logger = logging.getLogger(__name__)
 
-def generate_report(
-    analysis_id: int,
+
+def generate_upload_report(
+    upload_id: int,
+    primary_analysis_id: int,
     db: Session,
 ):
     try:
-        explanation_graph.invoke(
+        return explanation_graph.invoke(
             {
-                "analysis_id": analysis_id,
+                "upload_id": upload_id,
+                "primary_analysis_id": (
+                    primary_analysis_id
+                ),
                 "db": db,
                 "status": ExplanationStatus.PENDING,
             }
         )
 
-    except Exception as e:
+    except Exception:
         db.rollback()
-        try: 
+
+        try:
             row = db.get(
                 AnalysisResult,
-                analysis_id,
+                primary_analysis_id,
             )
+
             if row is not None:
-                row.explanation_status = ExplanationStatus.FAILED
-                row.explanation_generated_at = datetime.now(timezone.utc)
+                row.explanation_status = (
+                    ExplanationStatus.FAILED
+                )
+                row.explanation_generated_at = (
+                    datetime.now(timezone.utc)
+                )
 
                 db.commit()
                 db.refresh(row)
-            
+
             logger.exception(
-                "LLM report generation failed for analysis_id=%s",
-                analysis_id,
+                "Consolidated report generation failed | "
+                "upload_id=%s primary_analysis_id=%s",
+                upload_id,
+                primary_analysis_id,
             )
-        
-      
+
         except Exception:
             db.rollback()
             logger.exception(
-                "Failed to update explanation status for analysis_id=%s",
-                analysis_id,
+                "Failed to update report status | "
+                "primary_analysis_id=%s",
+                primary_analysis_id,
             )
-            raise
-            
+
         raise

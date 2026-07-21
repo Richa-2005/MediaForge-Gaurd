@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 from typing import Any
-from sqlalchemy import DateTime, Enum, Float, ForeignKey,Text, JSON
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -12,15 +12,14 @@ class AgentName(str, enum.Enum):
     AUDIO = "audio"
     VIDEO = "video"
     TEXT = "text"
+    FACTCHECK = "factcheck"
     SUPERVISOR = "supervisor"
 
 
 class Labels(str, enum.Enum):
     AUTHENTIC = "authentic"
     MANIPULATED ="manipulated"
-    MISLEADING = "misleading"
     UNCERTAIN = "uncertain"
-    PENDING = "pending"
 
 class ExplanationStatus(str,enum.Enum):
     PENDING = "pending"
@@ -30,6 +29,13 @@ class ExplanationStatus(str,enum.Enum):
 
 class AnalysisResult(Base):
     __tablename__ = "analysis_results"
+    __table_args__ = (
+        UniqueConstraint(
+            "upload_id",
+            "agent",
+            name="uq_analysis_result_upload_agent",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

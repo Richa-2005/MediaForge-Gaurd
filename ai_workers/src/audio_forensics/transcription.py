@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import librosa
 import whisper
 
 from src.audio_forensics.base import BaseAudioAnalyzer
@@ -16,7 +17,15 @@ class TranscriptionAnalyzer(BaseAudioAnalyzer):
         audio_path: Path,
     ) -> Evidence:
 
-        result = self.model.transcribe(str(audio_path), fp16=False)
+        # Whisper shells out to a system `ffmpeg` executable when given
+        # a path. Librosa already supports the application's audio
+        # formats, so pass decoded 16 kHz samples directly instead.
+        audio, _ = librosa.load(
+            audio_path,
+            sr=whisper.audio.SAMPLE_RATE,
+            mono=True,
+        )
+        result = self.model.transcribe(audio, fp16=False)
 
         transcript = result["text"].strip()
 

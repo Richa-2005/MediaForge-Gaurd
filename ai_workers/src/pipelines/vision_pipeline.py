@@ -7,6 +7,9 @@ from src.forensics.noise import NoiseAnalyzer
 from src.processors.face_processor import process_faces
 from src.schemas.evidence import Evidence
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class VisionPipeline:
     """
@@ -44,10 +47,15 @@ class VisionPipeline:
             exist_ok=True,
         )
 
-        face_results = process_faces(
-            image_path=image_path,
-            output_dir=output_dir / "faces",
-        )
+        try:
+            face_results = process_faces(
+                image_path=image_path,
+                output_dir=output_dir / "faces",
+            )
+
+        except Exception:
+            logger.exception("Face processing failed")
+            face_results = {}
 
         evidence: list[Evidence] = []
 
@@ -64,12 +72,20 @@ class VisionPipeline:
                 f"{artifact_name}.png"
             )
 
-            evidence.append(
-                analyzer.analyze(
+            try:
+                result = analyzer.analyze(
                     image_path=image_path,
                     artifact_path=artifact_path,
                 )
-            )
+
+                if result is not None:
+                    evidence.append(result)
+
+            except Exception:
+                    logger.exception(
+                        "%s failed",
+                        analyzer.__class__.__name__,
+                    )
 
         return evidence, face_results
 

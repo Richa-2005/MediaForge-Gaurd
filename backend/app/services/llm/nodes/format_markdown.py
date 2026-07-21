@@ -4,8 +4,13 @@ from app.services.llm.state import ExplanationState
 def format_markdown(
     state: ExplanationState,
 ) -> ExplanationState:
+    report = state.get("report")
 
-    report = state["report"]
+    if report is None:
+        raise ValueError(
+            "Explanation report is missing."
+        )
+
     confidence = report.verdict.confidence
 
     if confidence < 0.50:
@@ -14,12 +19,13 @@ def format_markdown(
         confidence_level = "Moderate"
     else:
         confidence_level = "High"
+
     markdown = f"""
 # {report.title}
 
 ---
 
-## Verdict
+## Overall Verdict
 
 **Result:** {report.verdict.label.title()}
 
@@ -39,28 +45,36 @@ def format_markdown(
 
 ---
 
-## Analysis
+## Agent Analysis
+""".strip()
 
-### Visual Analysis
+    for section in report.agent_analyses:
+        markdown += f"""
 
-{report.analysis.visual_analysis}
+### {section.title}
 
-### Audio Analysis
+**Agent:** `{section.agent}`
 
-{report.analysis.audio_analysis}
+{section.analysis}
 
-### Metadata Analysis
+#### Key Observations
+"""
 
-{report.analysis.metadata_analysis}
+        if section.key_observations:
+            for observation in section.key_observations:
+                markdown += f"\n- {observation}"
+        else:
+            markdown += "\n- No observations supplied."
+
+    markdown += """
 
 ---
 
-## Key Findings
-
+## Combined Key Findings
 """
 
     for finding in report.key_findings:
-        markdown += f"- {finding}\n"
+        markdown += f"\n- {finding}"
 
     markdown += f"""
 
@@ -83,6 +97,6 @@ def format_markdown(
 {report.technical_notes}
 """
 
-    state["report_markdown"] = markdown
+    state["report_markdown"] = markdown.strip()
 
     return state

@@ -6,18 +6,19 @@ from app.services.llm.state import ExplanationState
 def explain(
     state: ExplanationState,
 ) -> ExplanationState:
-
     context = state.get("formatted_context")
-    analysis = state.get("analysis_result")
+    primary_analysis = state.get(
+        "primary_analysis"
+    )
 
     if context is None:
         raise ValueError(
             "Formatted forensic context is missing."
         )
 
-    if analysis is None:
+    if primary_analysis is None:
         raise ValueError(
-            "Analysis result is missing."
+            "Primary analysis result is missing."
         )
 
     llm = get_chat_model()
@@ -26,12 +27,16 @@ def explain(
         ExplanationReport
     )
 
-    prompt = build_explanation_prompt(context)
+    report = structured_llm.invoke(
+        build_explanation_prompt(context)
+    )
 
-    report = structured_llm.invoke(prompt)
-
-    report.verdict.label = analysis.label.value
-    report.verdict.confidence = analysis.confidence
+    report.verdict.label = (
+        primary_analysis.label.value
+    )
+    report.verdict.confidence = (
+        primary_analysis.confidence
+    )
 
     state["report"] = report
 
@@ -43,93 +48,65 @@ def build_explanation_prompt(
     return f"""
 You are MediaForge Guard's Report Generation Agent.
 
-A forensic analysis has already been completed.
+Multiple forensic agents may have analyzed the same upload.
 
-Your responsibility is only to explain the supplied result.
-You do not decide the verdict.
+Your responsibility is to explain all supplied results in one
+consolidated report. You do not choose or modify the final
+verdict.
 
 Strict rules:
 
-1. Never change the supplied final verdict.
-2. Never change the supplied final confidence.
-3. Never invent evidence, analysis methods, metadata, or conclusions.
-4. Never describe the result as proven, confirmed, definitive, or certain.
-5. Use cautious language, especially when confidence is limited.
-6. A high individual method score does not automatically support authenticity.
-7. A high individual method score does not automatically support manipulation.
-8. Describe individual methods only using their supplied observations.
-9. Do not claim that image sharpness proves authenticity.
-10. Do not hide evidence that appears inconsistent with the final verdict.
-11. Explain that the final model considered all supplied signals together.
-12. Follow the applicable report sections supplied in the context.
-13. When a section is unavailable, write exactly: "Not applicable."
-14. Do not expose file-system paths or internal implementation details.
-15. Do not say that an observation may indicate both authenticity and manipulation.
-16. When the supplied evidence does not include an explicit interpretation, describe only the observation.
-17. Do not describe different findings as conflicting unless the forensic context explicitly says they conflict.
-18. Image sharpness is a descriptive property and must not be treated as evidence for or against authenticity unless explicitly stated.
-19. Distinguish between:
-    - an observation,
-    - a suspicious indicator,
-    - and evidence supporting the final verdict.
-20. If the relationship between a method result and the verdict is unclear, say that the result was considered as part of the overall analysis without assigning further meaning.
+1. Copy the primary verdict exactly.
+2. Copy the primary confidence exactly.
+3. Prefer the supervisor result when it is designated primary.
+4. Never invent evidence, sources, methods, or conclusions.
+5. Explain every available agent result separately.
+6. Do not create sections for agents that are not supplied.
+7. Do not treat individual method scores as overall confidence.
+8. Do not claim findings agree or conflict unless supported.
+9. Use cautious language.
+10. Never describe the result as proven or definitive.
+11. Do not expose file-system paths or implementation details.
+12. State important limitations and missing analysis coverage.
 
 Field requirements:
 
 title:
-Use a short title such as "MediaForge Guard Forensic Report".
+Use "MediaForge Guard Authenticity Report".
 
 verdict:
-Copy the supplied final verdict and confidence exactly.
-The confidence must remain a number between zero and one.
+Copy the supplied primary verdict and confidence exactly.
 
 summary:
-Write one sentence with at most 30 words.
-Mention the verdict.
-Do not include scores, percentages, or other numbers.
-Use cautious language.
-Include a verification recommendation when confidence is limited.
+One sentence, at most 30 words. Mention the verdict and use
+cautious language.
 
 executive_summary:
+Write 3 to 5 plain-language sentences summarizing the combined
+assessment and strongest supplied observations.
 
-Write 3 to 5 plain-language sentences.
-State the final classification and confidence level.
-Summarize the main observations.
-Do not infer that a finding supports manipulation or authenticity unless the supplied context explicitly says so.
-Do not call findings conflicting unless the context explicitly identifies a conflict.
-End with a cautious verification recommendation when confidence is limited.
+agent_analyses:
+Create one entry for every supplied agent result.
 
-analysis.visual_analysis:
-Explain only the supplied visual forensic observations.
-Methods such as ELA, FFT, blur analysis, noise analysis, frame analysis,
-and face analysis belong here.
-
-analysis.audio_analysis:
-Explain only supplied audio forensic observations.
-Otherwise write "Not applicable."
-
-analysis.metadata_analysis:
-Explain only actual file or EXIF metadata analysis.
-Evidence-method metadata and algorithm configuration do not count as
-metadata forensic analysis.
-Otherwise write "Not applicable."
+For each entry:
+- agent must match the supplied agent name.
+- title should be a readable section title.
+- analysis must explain only that agent's supplied findings.
+- key_observations must contain concise supported observations.
 
 key_findings:
-Provide 3 to 8 concise findings.
-Describe observations without assigning unsupported meaning.
-Do not treat the largest numerical score as automatically the strongest evidence.
+Provide 3 to 8 findings drawn from all available agents.
 
 limitations:
-Explain that automated forensic analysis may produce false positives,
-false negatives, or uncertain results.
+Mention uncertainty, possible false positives or false negatives,
+and unavailable analysis types where relevant.
 
 recommendation:
-Give practical advice such as checking the original source,
-comparing trusted copies, or requesting expert review for important cases.
+Provide practical verification advice.
 
 technical_notes:
-Explain the supplied overall confidence in plain language.
-Do not reinterpret individual method scores as overall confidence.
+Explain how the primary result relates to the specialist results
+without inventing fusion logic.
 
 Forensic context:
 

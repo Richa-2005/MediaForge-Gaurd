@@ -3,6 +3,9 @@ from src.retrievers.retriever_manager import RetrieverManager
 from src.verification.claim_verifier import ClaimVerifier
 from src.schemas.evidence import Evidence
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class FactCheckPipeline:
     """
@@ -37,20 +40,28 @@ class FactCheckPipeline:
 
         claims = self.extractor.extract(text)
 
-        evidence = []
+        evidence: list[Evidence] = []
 
         for claim in claims:
 
-            documents = self.retriever.retrieve(
-                claim
-            )
+            try:
+                documents = self.retriever.retrieve(
+                    claim
+                )
 
-            result = self.verifier.verify(
-                claim,
-                documents,
-            )
+                result = self.verifier.verify(
+                    claim,
+                    documents,
+                )
 
-            evidence.append(result)
+                if result is not None:
+                    evidence.append(result)
+
+            except Exception:
+                logger.exception(
+                    "Fact-check failed for claim: %s",
+                    claim,
+                )
 
         return evidence
 

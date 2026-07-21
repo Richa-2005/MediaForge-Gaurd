@@ -9,6 +9,9 @@ from src.audio_forensics.mfcc import MFCCAnalyzer
 from src.audio_forensics.transcription import TranscriptionAnalyzer
 from src.audio_forensics.quality import QualityAnalyzer
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 AUDIO_EXTENSIONS = {
     ".mp3",
@@ -71,25 +74,9 @@ class AudioPipeline:
                     evidence.append(result)
 
             except Exception as e:
-                print(
-                    f"{analyzer.__class__.__name__} failed: {e}"
+                logger.exception(
+                    "%s failed",
+                    analyzer.__class__.__name__,
                 )
 
         return evidence
-
-
-if __name__ == "__main__":
-    from src.config import (
-        DATA_DIR,
-        AUDIO_OUTPUT_DIR,
-    )
-
-    pipeline = AudioPipeline()
-
-    result = pipeline.run(
-        DATA_DIR / "sample_videos" / "demo_video.mp4",
-        AUDIO_OUTPUT_DIR,
-    )
-
-    for item in result:
-        print(item)

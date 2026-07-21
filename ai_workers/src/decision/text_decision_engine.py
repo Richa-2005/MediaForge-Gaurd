@@ -9,7 +9,7 @@ class TextDecisionEngine:
 
     WEIGHTS = {
 
-        "Sentiment": 0.15,
+        "Sentiment Analysis": 0.15,
 
         "Sensational Language": 0.30,
 
@@ -24,15 +24,13 @@ class TextDecisionEngine:
         evidence: list[Evidence],
     ) -> AnalysisResult:
 
-        # ----------------------------
         # Empty pipeline
-        # ----------------------------
 
         if not evidence:
 
             return AnalysisResult(
 
-                label="unknown",
+                label="uncertain",
 
                 risk_score=0.0,
 
@@ -44,9 +42,7 @@ class TextDecisionEngine:
 
             )
 
-        # ----------------------------
         # Weighted aggregation
-        # ----------------------------
 
         weighted_score = 0.0
 
@@ -92,25 +88,18 @@ class TextDecisionEngine:
 
         )
 
-        # ----------------------------
         # Label
-        # ----------------------------
 
         if risk_score >= 0.65:
-
-            label = "fake"
+            label = "manipulated"
 
         elif risk_score >= 0.35:
-
-            label = "unknown"
+            label = "uncertain"
 
         else:
+            label = "authentic"
 
-            label = "real"
-
-        # ----------------------------
         # Strongest signal
-        # ----------------------------
 
         scored = [
 

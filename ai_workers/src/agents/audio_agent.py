@@ -17,12 +17,12 @@ class AudioAgent:
 
     def analyze(
         self,
-        video_path: Path,
+        media_path: Path,
         upload_id: int,
     ) -> AgentResult:
 
         evidence = self.pipeline.run(
-            video_path,
+            media_path,
             AUDIO_OUTPUT_DIR,
         )
 
@@ -36,17 +36,3 @@ class AudioAgent:
             analysis=analysis,
             details={},
         )
-
-
-if __name__ == "__main__":
-
-    from src.config import DATA_DIR
-
-    agent = AudioAgent()
-
-    result = agent.analyze(
-        DATA_DIR / "sample_videos" / "demo_video.mp4",
-        upload_id=1,
-    )
-
-    print(result)

@@ -1,39 +1,35 @@
 from app.services.llm.nodes.format_markdown import format_markdown
 from app.services.llm.schemas import (
+    AgentAnalysisSection,
     ExplanationReport,
     Verdict,
-    AnalysisSection,
 )
 
-state = {
-    "report": ExplanationReport(
-        title="Media Authenticity Report",
-        summary="Likely authentic.",
-        verdict=Verdict(
-            label="Authentic",
-            confidence="High",
-        ),
-        executive_summary="No manipulation indicators were detected.",
-        analysis=AnalysisSection(
-            visual_analysis="No anomalies.",
-            audio_analysis="Not applicable.",
-            metadata_analysis="Metadata consistent.",
-        ),
-        key_findings=[
-            "Metadata is intact.",
-            "No visual inconsistencies.",
-            "High confidence prediction.",
-        ],
-        limitations="Automated analysis has limitations.",
-        recommendation="Verify with the original source.",
-        technical_notes="Confidence reflects model certainty.",
-    )
-}
 
-print("=" * 60)
-print("Testing Markdown Formatter")
-print("=" * 60)
+def test_format_markdown_supports_agent_independent_report():
+    state = {
+        "report": ExplanationReport(
+            title="MediaForge Guard Authenticity Report",
+            summary="The upload is likely authentic.",
+            verdict=Verdict(label="authentic", confidence=0.9),
+            executive_summary="No supplied result identified manipulation.",
+            agent_analyses=[
+                AgentAnalysisSection(
+                    agent="text",
+                    title="Text Analysis",
+                    analysis="No strong manipulation signal was found.",
+                    key_observations=["Language indicators were low risk."],
+                )
+            ],
+            key_findings=["The text result was low risk."],
+            limitations="Automated analysis may be wrong.",
+            recommendation="Verify the original source.",
+            technical_notes="The supervisor result is primary.",
+        )
+    }
 
-state = format_markdown(state)
+    result = format_markdown(state)
 
-print(state["report_markdown"])
+    assert "## Agent Analysis" in result["report_markdown"]
+    assert "### Text Analysis" in result["report_markdown"]
+    assert "90.00% (High)" in result["report_markdown"]

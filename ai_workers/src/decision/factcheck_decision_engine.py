@@ -21,7 +21,7 @@ class FactCheckDecisionEngine:
 
             return AnalysisResult(
 
-                label="unknown",
+                label = "uncertain",
 
                 risk_score=0.5,
 
@@ -81,15 +81,15 @@ class FactCheckDecisionEngine:
 
         if contradicted > supported:
 
-            label = "fake"
+            label = "manipulated"
 
         elif supported > contradicted:
 
-            label = "real"
+            label = "authentic"
 
         else:
 
-            label = "unknown"
+            label = "uncertain"
 
         explanation = (
 

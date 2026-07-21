@@ -13,6 +13,10 @@ def get_chat_model(temperature: float = 0.0) -> BaseChatModel:
         )
     
     if provider == "GROQ":
+        if not settings.GROQ_API_KEY.get_secret_value():
+            raise ValueError(
+                "GROQ_API_KEY must be configured when LLM_PROVIDER=GROQ."
+            )
         return ChatGroq(
             model="llama-3.3-70b-versatile",
             temperature=temperature,

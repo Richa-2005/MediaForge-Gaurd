@@ -26,18 +26,20 @@ class ClaimVerifier:
     )
 
     def __init__(self):
+        self.tokenizer = None
+        self.model = None
+        self.id2label = None
+
+    def load_model(self):
+        if self.model is not None:
+            return
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.MODEL_NAME
         )
-
-        self.model = (
-            AutoModelForSequenceClassification
-            .from_pretrained(
-                self.MODEL_NAME
-            )
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            self.MODEL_NAME
         )
-
         self.id2label = self.model.config.id2label
 
     def predict(
@@ -45,6 +47,7 @@ class ClaimVerifier:
         premise: str,
         hypothesis: str,
     ):
+        self.load_model()
 
         inputs = self.tokenizer(
 

@@ -1,6 +1,6 @@
 from app.services.processor_adapter import (
     process_video_adapter,process_image_adapter,
-    process_audio_adapter
+    process_audio_adapter, process_text_adapter
 )
 from app.services.artifact_service import save_artifacts
 from sqlalchemy.orm import Session
@@ -22,7 +22,7 @@ def route_service(upload, db: Session):
         upload.id,
         upload.media_type,
     )
-    
+
     if media_type == "video":
         artifacts = process_video_adapter(upload)
         saved = save_artifacts(artifacts, db)
@@ -38,7 +38,14 @@ def route_service(upload, db: Session):
         saved = save_artifacts(artifacts, db)
         return saved
 
-    return None
+    elif media_type == "text":
+        artifacts = process_text_adapter(upload)
+        saved = save_artifacts(artifacts, db)
+        return saved
+
+    raise ValueError(
+        f"Preprocessing is not implemented for media type: {media_type}"
+    )
 
 
 def run_preprocessing(upload, run, db : Session):

@@ -9,19 +9,18 @@ class FusionDecisionEngine:
 
     def evaluate(
         self,
-        vision: AgentResult | None,
-        audio: AgentResult | None,
+        results: list[AgentResult],
     ) -> AnalysisResult:
 
         available = [
             result.analysis
-            for result in [vision, audio]
+            for result in results
             if result is not None
         ]
 
         if not available:
             return AnalysisResult(
-                label="unknown",
+                label="uncertain",
                 risk_score=0.0,
                 confidence=0.0,
                 explanation="No analysis available.",
@@ -38,11 +37,14 @@ class FusionDecisionEngine:
             for item in available
         ) / len(available)
 
-        label = (
-            "fake"
-            if risk_score >= 0.5
-            else "real"
-        )
+        # Low-confidence or borderline evidence is inconclusive rather
+        # than evidence of authenticity.
+        if confidence < 0.5 or 0.4 < risk_score < 0.6:
+            label = "uncertain"
+        elif risk_score >= 0.6:
+            label = "manipulated"
+        else:
+            label = "authentic"
 
         explanation = (
             f"Combined analysis from {len(available)} AI workers."

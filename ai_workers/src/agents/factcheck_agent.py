@@ -30,7 +30,7 @@ class FactCheckAgent:
     def analyze(
         self,
         text: str,
-        upload_id: str = "text_input",
+        upload_id: int,
     ) -> AgentResult:
 
         evidence = self.pipeline.run(
@@ -71,6 +71,7 @@ if __name__ == "__main__":
 
     result = agent.analyze(
         sample,
+        upload_id=1,
     )
 
     print(result)

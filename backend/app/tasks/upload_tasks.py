@@ -58,18 +58,24 @@ def process_upload(self, upload_id: int, run_id: int):
             db,
         )
 
-        saved_result = run_analysis(
+        saved_results = run_analysis(
             upload,
             db,
         )
-        
-        complete_processing(saved_result,upload,running,db)
+
+        complete_processing(
+            saved_results,
+            upload,
+            running,
+            db,
+        )
 
 
         return {
             "status": "completed",
             "upload_id": upload_id,
-            "artifacts_saved": len(saved)
+            "artifacts_saved": len(saved),
+            "analysis_results_saved": len(saved_results),
         }
 
     except RETRYABLE_EXCEPTIONS as e:

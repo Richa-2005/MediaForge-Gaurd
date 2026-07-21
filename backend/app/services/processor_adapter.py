@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 from app.core.config import settings
@@ -6,21 +5,6 @@ from app.core.config import settings
 import logging
 logger = logging.getLogger(__name__)
 
-AI_WORKERS_DIR = Path(__file__).resolve().parents[3] / "ai_workers"
-if str(AI_WORKERS_DIR) not in sys.path:
-    sys.path.insert(0, str(AI_WORKERS_DIR))
-
-from ai_workers.src.processors.video_processor import (
-    get_video_metadata, 
-    extract_frames
-)
-from ai_workers.src.processors.image_processor import (
-    process_image
-)
-
-from ai_workers.src.processors.audio_processor import (
-    extract_audio
-)
 
 def get_output_dir(upload, artifact_folder):
     return (
@@ -30,6 +14,11 @@ def get_output_dir(upload, artifact_folder):
     )
 
 def process_video_adapter(upload):
+    from ai_workers.src.processors.video_processor import (
+        extract_frames,
+        get_video_metadata,
+    )
+
     video_path = Path(upload.file_path)
 
     output_dir = get_output_dir(upload,"frames")
@@ -47,7 +36,7 @@ def process_video_adapter(upload):
             "details": metadata,
         }
     )
-    
+
     for frame in frame_paths:
         artifacts.append(
             {
@@ -65,6 +54,7 @@ def process_video_adapter(upload):
     return artifacts
 
 def process_image_adapter(upload):
+    from ai_workers.src.processors.image_processor import process_image
 
     output_dir = get_output_dir(upload, "image")
     image_path = Path(upload.file_path)
@@ -114,5 +104,25 @@ def process_audio_adapter(upload):
         }
     ]
 
+def process_text_adapter(upload):
+    text_path = Path(upload.file_path)
+    try:
+        text = text_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            f"Text file is not valid UTF-8: {text_path}"
+        ) from exc
 
+    if not text.strip():
+        raise ValueError(
+            f"Text file is empty: {text_path}"
+        )
 
+    return [
+        {
+            "upload_id": upload.id,
+            "artifact_type": "processed_text",
+            "file_path": str(upload.file_path),
+            "details": {},
+        }
+    ]

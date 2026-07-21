@@ -1,4 +1,4 @@
-import spacy
+from src.utils.spacy_model import load_english_pipeline
 
 
 class ClaimExtractor:
@@ -94,7 +94,7 @@ class ClaimExtractor:
 
     def __init__(self):
 
-        self.nlp = spacy.load("en_core_web_sm")
+        self.nlp = load_english_pipeline()
 
     def extract(
         self,

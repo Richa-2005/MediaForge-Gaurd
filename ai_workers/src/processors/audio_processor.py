@@ -2,8 +2,6 @@ from pathlib import Path
 
 from moviepy import VideoFileClip
 
-from src.config import DATA_DIR
-
 import numpy as np
 
 
@@ -32,11 +30,3 @@ def extract_mfcc(audio_path: Path) -> np.ndarray:
 def transcribe_audio(audio_path: Path) -> str | None:
     # Enable Whisper later when FFmpeg is available
     return None
-
-
-if __name__ == "__main__":
-    sample_video = DATA_DIR / "sample_videos" / "demo_video.mp4"
-    demo_dir = Path("outputs/demo_audio")
-
-    audio_path = extract_audio(sample_video, demo_dir)
-    print(f"Extracted audio saved to: {audio_path}")

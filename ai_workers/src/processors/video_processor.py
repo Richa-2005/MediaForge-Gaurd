@@ -1,7 +1,6 @@
 import cv2
 from pathlib import Path
 
-from src.config import DATA_DIR
 from src.constants import FRAME_SKIP, FRAME_PREFIX, FRAME_EXTENSION
 
 
@@ -73,22 +72,3 @@ def count_saved_frames(output_dir: Path) -> int:
         return 0
 
     return len(list(output_dir.glob(f"*{FRAME_EXTENSION}")))
-
-
-if __name__ == "__main__":
-    sample_video = DATA_DIR / "sample_videos" / "sample.mp4"
-    demo_dir = Path("outputs/demo_frames")
-
-    metadata = get_video_metadata(sample_video)
-
-    print("Video Metadata")
-    print(metadata)
-
-    frames = extract_frames(sample_video, demo_dir)
-
-    print(f"Extracted {len(frames)} frames")
-
-    for frame in frames[:5]:
-        print(frame)
-
-    print(f"Frames Present: {count_saved_frames(demo_dir)}")

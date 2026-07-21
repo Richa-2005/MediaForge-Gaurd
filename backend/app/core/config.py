@@ -3,12 +3,16 @@ from pathlib import Path
 from pydantic import SecretStr
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+BACKEND_ROOT = REPOSITORY_ROOT / "backend"
+
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Media Sentinel"
     API_V1_PREFIX: str = "/api/v1"
-    DATABASE_URL: str = "sqlite:///./media_sentinel.db"
-    BASE_DIR: str = "/Users/richagupta/Documents/MediaForge-Gaurd/backend"
-    UPLOAD_DIR: str = BASE_DIR + "/storage/uploads"
+    DATABASE_URL: str = f"sqlite:///{REPOSITORY_ROOT / 'media_sentinel.db'}"
+    BASE_DIR: Path = BACKEND_ROOT
+    UPLOAD_DIR: Path = BACKEND_ROOT / "storage" / "uploads"
     MAX_UPLOAD_SIZE_BYTES : int = 50 * 1024 * 1024
     ALLOWED_MIME_TYPES : set[str] = {
         "image/jpg",
@@ -24,11 +28,11 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
-    PROCESSING_DIR: Path = Path(BASE_DIR) / "storage" / "processing"
+    PROCESSING_DIR: Path = BACKEND_ROOT / "storage" / "processing"
 
-    LLM_PROVIDER: str
-    GROQ_API_KEY: SecretStr
-    OLLAMA_BASE_URL: str
+    LLM_PROVIDER: str = "OLLAMA"
+    GROQ_API_KEY: SecretStr = SecretStr("")
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",

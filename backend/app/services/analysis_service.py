@@ -1,6 +1,6 @@
 from app.schemas.analysis_result import AnalysisResultCreate
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from app.models.analysis_result import AnalysisResult
 from pydantic import ValidationError
 
@@ -54,7 +54,7 @@ def save_analysis_result(analysis: dict, db: Session):
     #validate AI result
     try:
         validated_analysis = AnalysisResultCreate(**analysis)
-        
+
     except ValidationError as val:
         logger.exception(
             "\nCould not Store the analysis result.\n %s",
@@ -85,35 +85,37 @@ def get_analysis_result(analysis_id: int, db: Session):
     analysis_row = db.scalar(query)
     return analysis_row
 
-   
-        
-def run_analysis(upload, db: Session):
-    artifacts = db.scalars(
-        select(ProcessingArtifact).where(
-            ProcessingArtifact.upload_id == upload.id
-        )
-    ).all()
+def build_analysis_payload(
+    upload_id: int,
+    agent_name: AgentName,
+    result: AgentResult,
+) -> dict:
+    """
+    Convert an AI-worker AgentResult into the backend
+    AnalysisResultCreate-compatible dictionary.
+    """
 
-    analysis_agent = AnalysisAgent()
+    result_analysis: AIAnalysisResult = result.analysis
 
-    if upload.media_type == "video":
-        return run_video_analysis(upload,artifacts,analysis_agent,db)
+    return {
+        "upload_id": upload_id,
+        "agent": agent_name,
+        "label": result_analysis.label,
+        "risk_score": result_analysis.risk_score,
+        "confidence": result_analysis.confidence,
+        "explanation": result_analysis.explanation,
+        "evidence": [
+            evidence.model_dump()
+            for evidence in result_analysis.evidence
+        ],
+        "details": result.details or {},
+    }
 
-    elif upload.media_type == "image":
-        artifact_type = "processed_image"
-        result_key = "vision"
-        agent_name = AgentName.VISION
-
-    elif upload.media_type == "audio":
-        artifact_type = "processed_audio"
-        result_key = "audio"
-        agent_name = AgentName.AUDIO
-
-    else:
-        raise ValueError(
-            f"Analysis is not implemented for media type: {upload.media_type}"
-        )
-
+def get_processed_artifact(
+    upload_id: int,
+    artifacts: list[ProcessingArtifact],
+    artifact_type: str,
+) -> ProcessingArtifact:
     processed_artifact = next(
         (
             artifact
@@ -126,15 +128,30 @@ def run_analysis(upload, db: Session):
 
     if processed_artifact is None:
         raise ValueError(
-            f"No {artifact_type} artifact found for upload {upload.id}."
+            f"No {artifact_type} artifact found "
+            f"for upload {upload_id}."
         )
 
-    media_path = Path(processed_artifact.file_path)
+    artifact_path = Path(processed_artifact.file_path)
 
-    if not media_path.exists():
+    if not artifact_path.exists():
         raise FileNotFoundError(
-            f"Artifact file not found: {media_path}"
+            f"Artifact file not found: {artifact_path}"
         )
+
+    return processed_artifact
+
+def run_analysis(
+    upload,
+    db: Session,
+) -> list[AnalysisResult]:
+    artifacts = db.scalars(
+        select(ProcessingArtifact).where(
+            ProcessingArtifact.upload_id == upload.id
+        )
+    ).all()
+
+    analysis_agent = AnalysisAgent()
 
     logger.info(
         "Analysis started | upload_id=%s media_type=%s",
@@ -142,47 +159,99 @@ def run_analysis(upload, db: Session):
         upload.media_type,
     )
 
-    result_output = analysis_agent.analyze(
-        upload_id=upload.id,
-        media_path=media_path,
-        media_type=upload.media_type,
-    )
-
-    result: AgentResult | None = result_output.get(result_key)
-
-    if result is None:
-        raise ValueError(
-            f"{result_key} agent returned no result for upload {upload.id}."
+    if upload.media_type == "image":
+        analysis_payloads = dispatch_single_agent(
+            upload,
+            artifacts,
+            analysis_agent,
+            artifact_type="processed_image",
+            result_key="vision",
+            agent_name=AgentName.VISION,
         )
 
-    result_analysis: AIAnalysisResult = result.analysis
+    elif upload.media_type == "audio":
+        analysis_payloads = dispatch_single_agent(
+            upload,
+            artifacts,
+            analysis_agent,
+            artifact_type="processed_audio",
+            result_key="audio",
+            agent_name=AgentName.AUDIO,
+        )
 
-    extracted_analysis = {
-        "upload_id": upload.id,
-        "agent": agent_name,
-        "label": result_analysis.label,
-        "risk_score": result_analysis.risk_score,
-        "confidence": result_analysis.confidence,
-        "explanation": result_analysis.explanation,
-        "evidence": [
-            evidence.model_dump()
-            for evidence in result_analysis.evidence
-        ],
-        "details": result.details,
-    }
+    elif upload.media_type == "video":
+        analysis_payloads = run_video_analysis(
+            upload,
+            artifacts,
+            analysis_agent,
+        )
+    elif upload.media_type == "text":
+        analysis_payloads = dispatch_text_agents(
+            upload,
+            artifacts,
+            analysis_agent,
+        )
 
-    saved_result = save_analysis_result(extracted_analysis, db)
+    else:
+        raise ValueError(
+            "Analysis is not implemented for media type: "
+            f"{upload.media_type}"
+        )
+
+    # Validate every result before changing the database. Replacing the
+    # same agents in one transaction makes Celery retries idempotent and
+    # prevents a partially stored text/fact-check/fusion result set.
+    validated_analyses = [
+        AnalysisResultCreate(**payload)
+        for payload in analysis_payloads
+    ]
+    agents = [analysis.agent for analysis in validated_analyses]
+    saved_results = [
+        AnalysisResult(
+            upload_id=analysis.upload_id,
+            agent=analysis.agent,
+            label=analysis.label,
+            risk_score=analysis.risk_score,
+            confidence=analysis.confidence,
+            explanation=analysis.explanation,
+            evidence=analysis.evidence,
+            details=analysis.details,
+        )
+        for analysis in validated_analyses
+    ]
+
+    try:
+        db.execute(
+            delete(AnalysisResult).where(
+                AnalysisResult.upload_id == upload.id,
+                AnalysisResult.agent.in_(agents),
+            )
+        )
+        db.add_all(saved_results)
+        db.commit()
+        for saved_result in saved_results:
+            db.refresh(saved_result)
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Failed to atomically store analyses | upload_id=%s",
+            upload.id,
+        )
+        raise
 
     logger.info(
-        "Analysis completed | upload_id=%s agent=%s",
+        "Analysis completed | upload_id=%s results=%s",
         upload.id,
-        agent_name,
+        len(saved_results),
     )
 
-    return saved_result
+    return saved_results
 
-
-def run_video_analysis(upload, artifacts, analysis_agent, db: Session):
+def run_video_analysis(
+    upload,
+    artifacts: list[ProcessingArtifact],
+    analysis_agent: AnalysisAgent,
+) -> list[dict]:
 
         frame_artifacts = [
             artifact
@@ -233,7 +302,6 @@ def run_video_analysis(upload, artifacts, analysis_agent, db: Session):
             per_frame_results.append(
                 {
                     "artifact_id": frame_artifact.id,
-                    "file_path": frame_artifact.file_path,
                     "label": frame_analysis.label,
                     "risk_score": frame_analysis.risk_score,
                     "confidence": frame_analysis.confidence,
@@ -258,21 +326,123 @@ def run_video_analysis(upload, artifacts, analysis_agent, db: Session):
             "details": {
                 "total_frames": len(frame_artifacts),
                 "analyzed_frames": len(frame_results),
-                "highest_risk_frame": (
-                    highest_risk_artifact.file_path
-                ),
+                "highest_risk_artifact_id": highest_risk_artifact.id,
                 "frame_results": per_frame_results,
             },
         }
-        saved_result = save_analysis_result(
-            extracted_analysis,
-            db,
-        )
         logger.info(
-            "Video analysis completed | upload_id=%s frames=%s "
+            "Video analysis prepared | upload_id=%s frames=%s "
             "highest_risk=%s",
             upload.id,
             len(frame_results),
             result_analysis.risk_score,
         )
-        return saved_result
+
+        return [extracted_analysis]
+
+
+def dispatch_single_agent(
+    upload,
+    artifacts: list[ProcessingArtifact],
+    analysis_agent: AnalysisAgent,
+    *,
+    artifact_type: str,
+    result_key: str,
+    agent_name: AgentName,
+) -> list[dict]:
+    processed_artifact = get_processed_artifact(
+        upload_id=upload.id,
+        artifacts=artifacts,
+        artifact_type=artifact_type,
+    )
+
+    media_path = Path(processed_artifact.file_path)
+
+    result_output = analysis_agent.analyze(
+        upload_id=upload.id,
+        media_path=media_path,
+        media_type=upload.media_type,
+    )
+
+    result: AgentResult | None = result_output.get(
+        result_key
+    )
+
+    if result is None:
+        raise ValueError(
+            f"{result_key} agent returned no result "
+            f"for upload {upload.id}."
+        )
+
+    return [
+        build_analysis_payload(
+            upload_id=upload.id,
+            agent_name=agent_name,
+            result=result,
+        )
+    ]
+
+def dispatch_text_agents(
+    upload,
+    artifacts: list[ProcessingArtifact],
+    analysis_agent: AnalysisAgent,
+) -> list[dict]:
+    processed_artifact = get_processed_artifact(
+        upload_id=upload.id,
+        artifacts=artifacts,
+        artifact_type="processed_text",
+    )
+
+    text_path = Path(processed_artifact.file_path)
+
+    result_output = analysis_agent.analyze(
+        upload_id=upload.id,
+        media_path=text_path,
+        media_type="text",
+    )
+
+    result_mappings = (
+        (
+            "text",
+            AgentName.TEXT,
+        ),
+        (
+            "factcheck",
+            AgentName.FACTCHECK,
+        ),
+        (
+            "fusion",
+            AgentName.SUPERVISOR,
+        ),
+    )
+
+    payloads: list[dict] = []
+
+    for result_key, agent_name in result_mappings:
+        result: AgentResult | None = result_output.get(
+            result_key
+        )
+
+        if result is None:
+            logger.warning(
+                "%s agent returned no result | upload_id=%s",
+                result_key,
+                upload.id,
+            )
+            continue
+
+        payloads.append(
+            build_analysis_payload(
+                upload_id=upload.id,
+                agent_name=agent_name,
+                result=result,
+            )
+        )
+
+    if not payloads:
+        raise ValueError(
+            f"No text analysis results were produced "
+            f"for upload {upload.id}."
+        )
+
+    return payloads

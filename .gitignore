@@ -40,3 +40,10 @@ backend/logs/
 # OS files
 .DS_Store
 Thumbs.db
+
+.DS_Store
+__MACOSX/
+__pycache__/
+*.py[cod]
+
+ai_workers/outputs/

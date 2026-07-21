@@ -3,17 +3,30 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from app.models.processing_run import RunStatus
 from app.models.upload import Upload, UploadStatus
-from app.services.llm.report_service import generate_report
+from app.models.analysis_result import AgentName, AnalysisResult
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+def generate_upload_report(*, upload_id: int, primary_analysis_id: int, db):
+    """Load the LLM stack only inside the task that needs it."""
+    from app.services.llm.report_service import (
+        generate_upload_report as generate_report,
+    )
+
+    return generate_report(
+        upload_id=upload_id,
+        primary_analysis_id=primary_analysis_id,
+        db=db,
+    )
 
 def create_step(
     processing_run_id: int,
     step_name: str,
     db: Session
 ) -> ProcessingStep:
-    
+
     try:
         row = ProcessingStep(
             processing_run_id=processing_run_id,
@@ -102,8 +115,17 @@ def skip_step(
         raise
 
 
-def complete_processing(saved_analysis,upload, running, db: Session):
-
+def complete_processing(
+    saved_analyses: list[AnalysisResult],
+    upload,
+    running,
+    db: Session,
+):
+    if not saved_analyses:
+        raise ValueError(
+            f"No analysis results were produced "
+            f"for upload {upload.id}."
+        )
     running.status = RunStatus.COMPLETED
     running.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
     if running.started_at is None:
@@ -125,12 +147,30 @@ def complete_processing(saved_analysis,upload, running, db: Session):
         running.duration_ms,
     )
 
+    supervisor_result = next(
+        (
+            result
+            for result in saved_analyses
+            if result.agent == AgentName.SUPERVISOR
+        ),
+        None,
+    )
+    primary_result = supervisor_result or max(
+        saved_analyses,
+        key=lambda result: result.risk_score,
+    )
+
     try:
-        generate_report(saved_analysis.id, db)
+        generate_upload_report(
+            upload_id=upload.id,
+            primary_analysis_id=primary_result.id,
+            db=db,
+        )
     except Exception:
         logger.exception(
-            "Unable to generate LLM report for analysis_id=%s",
-            saved_analysis.id,
+            "Unable to generate LLM report "
+            "for analysis_id=%s",
+            primary_result.id,
         )
 
     return running
@@ -143,7 +183,10 @@ def fail_processing(
     error,
     db,
 ):
-    if media_preprocessing_step is not None:
+    if (
+        media_preprocessing_step is not None
+        and media_preprocessing_step.status != StepStatus.COMPLETED
+    ):
         fail_step(media_preprocessing_step, str(error), db)
 
     upload = db.get(Upload, upload_id)

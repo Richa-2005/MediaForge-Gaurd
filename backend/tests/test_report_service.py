@@ -1,35 +1,22 @@
-from sqlalchemy import select
+from unittest.mock import Mock
 
-from app.database.session import SessionLocal
-from app.models.analysis_result import AnalysisResult
-from app.services.llm.report_service import generate_report
+from app.models.analysis_result import ExplanationStatus
+from app.services.llm import report_service
 
-db = SessionLocal()
 
-analysis = db.scalar(
-    select(AnalysisResult)
-)
+def test_generate_upload_report_passes_consolidated_identifiers(monkeypatch):
+    invoke = Mock(return_value={"status": ExplanationStatus.COMPLETED})
+    monkeypatch.setattr(report_service.explanation_graph, "invoke", invoke)
+    db = Mock()
 
-if analysis is None:
-    raise RuntimeError(
-        "No analysis result exists."
+    result = report_service.generate_upload_report(
+        upload_id=7,
+        primary_analysis_id=11,
+        db=db,
     )
 
-print("=" * 60)
-print("Testing Report Service")
-print("=" * 60)
-
-generate_report(
-    analysis.id,
-    db,
-)
-
-analysis = db.get(
-    AnalysisResult,
-    analysis.id,
-)
-
-print()
-
-print("Status :", analysis.explanation_status)
-print("Summary :", analysis.summary)
+    assert result == {"status": ExplanationStatus.COMPLETED}
+    state = invoke.call_args.args[0]
+    assert state["upload_id"] == 7
+    assert state["primary_analysis_id"] == 11
+    assert state["db"] is db
