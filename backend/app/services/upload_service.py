@@ -13,9 +13,42 @@ from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
 from app.tasks.upload_tasks import process_upload
 
+
+MIME_EXTENSIONS = {
+    "image/jpg": ".jpg",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "video/mp4": ".mp4",
+    "audio/mp3": ".mp3",
+    "audio/mpeg": ".mp3",
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+    "text/plain": ".txt",
+}
+
+
+def detect_media_mime(header_bytes: bytes) -> str:
+    return magic.from_buffer(header_bytes, mime=True)
+
+
+def validate_media_mime(detected_mime: str) -> None:
+    if detected_mime not in settings.ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=(
+                f"Unsupported file type: {detected_mime}. "
+                "Only standard media files are allowed."
+            ),
+        )
+
+
 async def validating_file(uploadedFile : UploadFile) -> str:
     #Validating the file
-    if uploadedFile.size > settings.MAX_UPLOAD_SIZE_BYTES:
+    if (
+        uploadedFile.size is not None
+        and uploadedFile.size > settings.MAX_UPLOAD_SIZE_BYTES
+    ):
          raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"File too large. Maximum allowed size is {settings.MAX_UPLOAD_SIZE_BYTES / (1024*1024)}MB."
@@ -24,13 +57,8 @@ async def validating_file(uploadedFile : UploadFile) -> str:
     header_bytes = await uploadedFile.read(2048)
     await uploadedFile.seek(0) 
 
-    detected_mime = magic.from_buffer(header_bytes, mime=True)
-
-    if detected_mime not in settings.ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported file type: {detected_mime}. Only standard media files are allowed."
-        )
+    detected_mime = detect_media_mime(header_bytes)
+    validate_media_mime(detected_mime)
     
     return detected_mime
     
@@ -70,7 +98,7 @@ def upload_media(
         original_filename=uploadedFile.filename,
         stored_filename=str(file_path).split('/')[-1],
         file_path=str(file_path),
-        media_type=uploadedFile.content_type.split('/',1)[0],
+        media_type=detected_mime.split('/', 1)[0],
         mime_type=detected_mime,
         file_size=uploadedFile.size,
         sha256_hash=sha_hash,

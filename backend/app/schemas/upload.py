@@ -11,3 +11,7 @@ class UploadResponse(BaseModel):
     stored_filename: str
     sha256_hash: str
     created_at: datetime
+
+
+class URLUploadRequest(BaseModel):
+    url: str

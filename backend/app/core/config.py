@@ -14,13 +14,18 @@ class Settings(BaseSettings):
     BASE_DIR: Path = BACKEND_ROOT
     UPLOAD_DIR: Path = BACKEND_ROOT / "storage" / "uploads"
     MAX_UPLOAD_SIZE_BYTES : int = 50 * 1024 * 1024
+    URL_DOWNLOAD_TIMEOUT_SECONDS: float = 15.0
+    URL_MAX_REDIRECTS: int = 5
     ALLOWED_MIME_TYPES : set[str] = {
         "image/jpg",
-        "image/jpeg", 
-        "image/png",  
-        "video/mp4", 
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "video/mp4",
         "audio/mp3",
         "audio/mpeg",
+        "audio/wav",
+        "audio/x-wav",
         "text/plain"
     }
 

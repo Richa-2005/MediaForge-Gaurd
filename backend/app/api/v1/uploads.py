@@ -3,10 +3,29 @@ from sqlalchemy.orm import Session
 
 from app.services.upload_service import create_upload, get_upload_status
 from app.services.analysis_service import get_upload_results
+from app.services.url_ingestion_service import (
+    URLIngestionError,
+    ingest_media_url,
+)
 from app.database.session import get_db
+from app.schemas.upload import URLUploadRequest
 
 
 router = APIRouter()
+
+
+@router.post("/uploads/url")
+async def upload_media_from_url(
+    request: URLUploadRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        return await ingest_media_url(request.url, db)
+    except URLIngestionError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.detail,
+        ) from exc
 
 @router.get("/uploads/{upload_id}/results")
 def upload_results(
@@ -53,4 +72,3 @@ async def upload_media(
 ):
     created_upload = await create_upload(uploaded_file, db)
     return created_upload
-
