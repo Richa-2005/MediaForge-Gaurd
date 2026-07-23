@@ -1,9 +1,11 @@
 import { Icon } from "./Icon";
+import { HeroForensicsBackdrop } from "./HeroForensicsBackdrop";
 import { MediaIntakePanel } from "./MediaIntakePanel";
 
 export function Hero() {
   return (
     <section className="hero section" aria-labelledby="hero-title">
+      <HeroForensicsBackdrop />
       <div className="container hero__grid">
         <div className="hero__content">
           <p className="eyebrow reveal">Media authenticity analysis</p>

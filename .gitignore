@@ -67,3 +67,13 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 __MACOSX/
+
+# Miscellaneous
+hero-builder-v2/
+
+# Local datasets and generated test artifacts
+datasets/
+ai_workers/testing
+ai_workers/testing/artifacts/
+ai_workers/testing/images/
+ai_workers/testing/results/

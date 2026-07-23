@@ -1,6 +1,7 @@
 import type { UploadSummary } from "../types/dashboard";
 import { getPrimaryResult, isReportGenerating, isReportFailed } from "../utils/investigation";
 import { StatusBadge } from "./StatusBadge";
+import { ProcessingSketch } from "./InvestigationMotionIllustrations";
 
 type ProgressMode = "initializing" | "processing" | "active" | "completed" | "failed";
 
@@ -43,7 +44,7 @@ export function ProgressStatePanel({ summary }: { summary: UploadSummary }) {
 
   return (
     <section className={`progress-state progress-state--${mode} scroll-reveal`} aria-labelledby="progress-state-title">
-      <div className="progress-state__signal" aria-hidden="true"><span /><span /><span /></div>
+      <div className="progress-state__signal" aria-hidden="true"><ProcessingSketch mediaType={summary.upload.media_type} /><span /><span /><span /></div>
       <div className="progress-state__content">
         <p className="eyebrow">Investigation status</p>
         <h2 id="progress-state-title">{title}</h2>
