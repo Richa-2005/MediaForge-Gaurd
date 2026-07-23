@@ -18,9 +18,9 @@ async function request<T>(path: string): Promise<T> {
 }
 
 export function getUploadSummary(uploadId: number) {
-  return request<UploadSummary>(`/api/v1/api/v1/dashboard/uploads/${uploadId}/summary`);
+  return request<UploadSummary>(`/api/v1/dashboard/uploads/${uploadId}/summary`);
 }
 
 export function getRecentInvestigations(limit = 5) {
-  return request<UploadRecord[]>(`/api/v1/api/v1/dashboard/uploads/recent?limit=${limit}`);
+  return request<UploadRecord[]>(`/api/v1/dashboard/uploads/recent?limit=${limit}`);
 }

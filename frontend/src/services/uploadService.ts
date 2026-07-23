@@ -38,5 +38,5 @@ export function getUploadStatus(uploadId: number) {
 }
 
 export function getRecentUploads(limit = 5) {
-  return request<UploadRecord[]>(`/api/v1/api/v1/dashboard/uploads/recent?limit=${limit}`);
+  return request<UploadRecord[]>(`/api/v1/dashboard/uploads/recent?limit=${limit}`);
 }

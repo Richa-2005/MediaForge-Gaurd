@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 router = APIRouter()
 
-@router.get("/api/v1/analysis/{result_id}")
+@router.get("/analysis/{result_id}")
 def get_analysis(
     result_id: int, 
     db: Session = Depends(get_db)

@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "OLLAMA"
     GROQ_API_KEY: SecretStr = SecretStr("")
     OLLAMA_BASE_URL: str = "http://localhost:11434"
+    JWT_SECRET_KEY: SecretStr = SecretStr("change-me-in-production")
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
