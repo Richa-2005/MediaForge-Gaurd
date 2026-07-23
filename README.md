@@ -1,6 +1,10 @@
 # MediaForge Guard
 
 <p align="center">
+  <img src="assets/hero.svg" alt="MediaForge-Guard Architecture" width="100%">
+</p>
+
+<p align="center">
   <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=24&duration=3000&pause=1200&color=FFFFFF&center=true&vCenter=true&width=800&lines=Digital+Content+Cannot+Be+Trusted+by+Appearance+Alone;Synthetic+Media+is+Changing+the+Information+Landscape;MediaForge-Guard+Brings+AI-Powered+Verification;From+Raw+Media+to+Explainable+Evidence" />
 </p>
 
@@ -205,17 +209,11 @@ A controlled backend workflow managing:
 
 
 
+<p align="center">
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-
-
-
-
-
-
-
-
-
+</p>
 
 
 ## Backend
@@ -257,3 +255,71 @@ npm run dev
 Vite proxies `/api` to `VITE_BACKEND_URL`, defaulting to
 `http://localhost:8000`. Set `VITE_API_BASE_URL` only when the browser should
 call the backend directly instead of using the dev proxy.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 align="center">📂 Repository Structure</h2>
+
+```text
+MediaForge-Guard
+│
+├── backend
+│   ├── api
+│   ├── ai_workers
+│   ├── models
+│   ├── pipelines
+│   └── tests
+│
+├── frontend
+│   ├── app
+│   ├── components
+│   ├── public
+│   └── styles
+│
+├── assets
+│   ├── hero.svg
+│   └── screenshots
+│
+└── README.md
+```
+
+---
+
+
+<p align="center">
+
+<img src="https://readme-typing-svg.demolab.com?font=Inter&size=18&duration=4000&pause=1500&color=C7A86A&center=true&vCenter=true&width=700&lines=Building+Trust+in+Digital+Media.;Multi-Agent+AI+for+Content+Verification.;MediaForge-Guard."/>
+
+</p>
+
+<p align="center">
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</p>
+
+
+<p align="center">
+
+<img src="https://readme-typing-svg.demolab.com?font=Inter&weight=500&size=18&duration=3500&pause=1500&color=C7A86A&center=true&vCenter=true&width=750&lines=Built+with+%E2%9D%A4%EF%B8%8F+for+trustworthy+digital+media.;Created+by+Rashmi+Jha+%26+Richa+Gupta." />
+
+</p>
