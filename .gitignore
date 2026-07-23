@@ -2,48 +2,66 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
 
 # Virtual environments
 .venv/
 venv/
 env/
+ENV/
+backend/.venv/
 
-# Pytest
+# Test, type, and coverage output
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
 
-# VS Code
-.vscode/
-
-# Environment variables
+# Environment and secrets
 .env
+.env.*
+!.env.example
+!.env.sample
 
-# SQLite
+# Local databases and broker state
 *.db
 *.sqlite
 *.sqlite3
-
-# Redis
+*.rdb
 dump.rdb
-
-# AI generated outputs
-ai_workers/outputs/
-ai_workers/temp/
-
-# Backend generated storage
-backend/storage/uploads/
-backend/storage/processing/
 
 # Logs
 logs/
 backend/logs/
+*.log
 
-# OS files
+# Backend and worker generated storage
+ai_workers/outputs/
+ai_workers/temp/
+backend/storage/uploads/
+backend/storage/processing/
+
+# Frontend dependencies and generated output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor and OS files
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
-
-.DS_Store
 __MACOSX/
-__pycache__/
-*.py[cod]
-
-ai_workers/outputs/
