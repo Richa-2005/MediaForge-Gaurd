@@ -8,10 +8,10 @@ BACKEND_ROOT = REPOSITORY_ROOT / "backend"
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Media Sentinel"
+    PROJECT_NAME: str = "MediaForge-Gaurd"
     ENVIRONMENT: str = "development"
     API_V1_PREFIX: str = "/api/v1"
-    DATABASE_URL: str = f"sqlite:///{REPOSITORY_ROOT / 'media_sentinel.db'}"
+    DATABASE_URL: str = f"sqlite:///{REPOSITORY_ROOT / 'mediaforge.db'}"
     BASE_DIR: Path = BACKEND_ROOT
     UPLOAD_DIR: Path = BACKEND_ROOT / "storage" / "uploads"
     MAX_UPLOAD_SIZE_BYTES : int = 50 * 1024 * 1024

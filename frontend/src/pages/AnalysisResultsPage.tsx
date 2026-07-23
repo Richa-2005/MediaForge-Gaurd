@@ -8,6 +8,7 @@ import { SiteFooter } from "../components/SiteFooter";
 import { SiteHeader } from "../components/SiteHeader";
 import { getUploadSummary } from "../services/dashboardService";
 import type { UploadSummary } from "../types/dashboard";
+import { isInvestigationFinished } from "../utils/investigation";
 
 function queryUploadId() {
   const value = new URLSearchParams(window.location.search).get("uploadId");
@@ -30,7 +31,7 @@ export function AnalysisResultsPage() {
   }, [uploadId]);
 
   useEffect(() => {
-    if (!summary || !["queued", "processing"].includes(summary.upload.status)) return;
+    if (!summary || isInvestigationFinished(summary)) return;
     const interval = window.setInterval(() => { getUploadSummary(summary.upload.id).then(setSummary).catch(() => undefined); }, 4000);
     return () => window.clearInterval(interval);
   }, [summary]);

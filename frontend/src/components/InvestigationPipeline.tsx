@@ -1,4 +1,5 @@
 import type { UploadSummary } from "../types/dashboard";
+import { getPrimaryResult } from "../utils/investigation";
 import { StatusBadge } from "./StatusBadge";
 
 type PipelineState = "completed" | "current" | "pending" | "failed";
@@ -8,7 +9,7 @@ function pipelineState(summary: UploadSummary, index: number): PipelineState {
   const hasAnalyses = summary.analysis_results.length > 0;
   const hasEvidence = summary.analysis_results.some((result) => result.evidence?.length) || summary.artifacts.length > 0;
   const hasAssessment = summary.analysis_results.some((result) => typeof result.confidence === "number" && typeof result.risk_score === "number");
-  const reportOwner = summary.analysis_results.find((result) => result.report || result.report_markdown || result.explanation_status !== "pending");
+  const primaryResult = getPrimaryResult(summary);
 
   if (summary.upload.status === "failed" || summary.processing_run?.status === "failed" || preprocessing?.status === "failed") return index <= 2 ? "failed" : "pending";
   const states: PipelineState[] = [
@@ -17,7 +18,7 @@ function pipelineState(summary: UploadSummary, index: number): PipelineState {
     preprocessing?.status === "completed" ? "completed" : preprocessing?.status === "running" || summary.upload.status === "processing" ? "current" : "pending",
     hasAnalyses ? "completed" : summary.upload.status === "processing" ? "current" : "pending",
     hasEvidence && hasAssessment ? "completed" : hasAnalyses ? "current" : "pending",
-    reportOwner?.explanation_status === "completed" ? "completed" : reportOwner?.explanation_status === "failed" ? "failed" : hasAssessment ? "current" : "pending",
+    primaryResult?.explanation_status === "completed" ? "completed" : primaryResult?.explanation_status === "failed" ? "failed" : hasAssessment ? "current" : "pending",
   ];
   return states[index];
 }

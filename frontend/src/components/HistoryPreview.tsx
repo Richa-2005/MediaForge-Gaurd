@@ -1,20 +1,16 @@
 import type { UploadSummary } from "../types/dashboard";
+import { getPrimaryResult, isInvestigationFinished } from "../utils/investigation";
 import { StatusBadge } from "./StatusBadge";
-
-function primaryResult(summary: UploadSummary) {
-  return summary.analysis_results.find((result) => result.agent === "supervisor")
-    ?? summary.analysis_results.find((result) => result.report || result.summary)
-    ?? summary.analysis_results[0];
-}
 
 export function HistoryPreview({ summary, loading, error }: { summary: UploadSummary | null; loading: boolean; error: string | null }) {
   if (loading) return <aside className="history-preview history-preview--loading" aria-label="Loading selected investigation"><span /><span /><span /></aside>;
   if (error) return <aside className="history-preview history-preview--message"><p role="alert">{error}</p></aside>;
   if (!summary) return <aside className="history-preview history-preview--message"><p>Select a returned submission to inspect its available summary.</p></aside>;
 
-  const result = primaryResult(summary);
-  const destination = summary.upload.status === "completed" ? `/results?uploadId=${summary.upload.id}` : `/progress?uploadId=${summary.upload.id}`;
-  const destinationLabel = summary.upload.status === "completed" ? "Open results" : "Follow progress";
+  const result = getPrimaryResult(summary);
+  const isFinished = isInvestigationFinished(summary);
+  const destination = isFinished && summary.upload.status === "completed" ? `/results?uploadId=${summary.upload.id}` : `/progress?uploadId=${summary.upload.id}`;
+  const destinationLabel = isFinished && summary.upload.status === "completed" ? "Open results" : "Follow progress";
 
   return (
     <aside className="history-preview" aria-labelledby="history-preview-title">

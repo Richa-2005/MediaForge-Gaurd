@@ -1,7 +1,7 @@
 import logging
 
 from sqlalchemy import Engine, inspect, text
-
+from app.models.upload import Upload
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ def migrate_database_schema(engine: Engine) -> None:
 
 
 def _migrate_sqlite_uploads(engine: Engine) -> None:
+
     with engine.connect() as connection:
         table_sql = connection.scalar(
             text(
@@ -27,24 +28,147 @@ def _migrate_sqlite_uploads(engine: Engine) -> None:
         if table_sql is None:
             return
 
+        inspector = inspect(connection)
         columns = {
             column["name"]
-            for column in inspect(connection).get_columns("uploads")
+            for column in inspector.get_columns("uploads")
         }
+        unique_constraints = inspector.get_unique_constraints("uploads")
+        indexes = inspector.get_indexes("uploads")
 
-        if "user_id" in columns:
+        has_user_id = "user_id" in columns
+
+        has_composite_uniqueness = any(
+            constraint.get("column_names") == [
+                "user_id",
+                "sha256_hash",
+            ]
+            for constraint in unique_constraints
+        ) or any(
+            index.get("unique")
+            and index.get("column_names")
+            == ["user_id", "sha256_hash"]
+            for index in indexes
+        )
+
+        has_global_hash_uniqueness = (
+            "UNIQUE (sha256_hash)" in table_sql
+            or any(
+                index.get("unique")
+                and index.get("column_names") == ["sha256_hash"]
+                for index in indexes
+            )
+            or any(
+                constraint.get("column_names") == ["sha256_hash"]
+                for constraint in unique_constraints
+            )
+        )
+
+        if (
+            has_user_id
+            and has_composite_uniqueness
+            and not has_global_hash_uniqueness
+        ):
             return
 
-        connection.exec_driver_sql(
-            "ALTER TABLE uploads ADD COLUMN user_id INTEGER"
+        duplicate = (
+            connection.execute(
+                text(
+                    "SELECT user_id, sha256_hash, COUNT(*) AS row_count "
+                    "FROM uploads "
+                    "WHERE user_id IS NOT NULL "
+                    "GROUP BY user_id, sha256_hash "
+                    "HAVING COUNT(*) > 1 "
+                    "LIMIT 1"
+                )
+            ).first()
+            if has_user_id
+            else None
         )
-        connection.exec_driver_sql(
-            "CREATE INDEX IF NOT EXISTS ix_uploads_user_id "
-            "ON uploads (user_id)"
-        )
-        connection.commit()
-        logger.info("Migrated uploads table with nullable user_id.")
 
+        if duplicate is not None:
+            raise RuntimeError(
+                "Cannot migrate uploads while duplicate user/hash rows "
+                "exist: "
+                f"user_id={duplicate.user_id}, "
+                f"sha256_hash={duplicate.sha256_hash}."
+            )
+
+        model_columns = [
+            column.name
+            for column in Upload.__table__.columns
+        ]
+
+        copy_columns = [
+            column
+            for column in model_columns
+            if column in columns or column == "user_id"
+        ]
+
+        selected_columns = [
+            f'"{column}"'
+            if column in columns
+            else "NULL AS user_id"
+            for column in copy_columns
+        ]
+
+        quoted_columns = ", ".join(
+            f'"{column}"'
+            for column in copy_columns
+        )
+
+        connection.commit()
+        connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        connection.commit()
+
+        try:
+            with connection.begin():
+                connection.exec_driver_sql(
+                    "DROP TABLE IF EXISTS _uploads_old"
+                )
+
+                connection.exec_driver_sql(
+                    "ALTER TABLE uploads RENAME TO _uploads_old"
+                )
+
+                old_indexes = connection.exec_driver_sql(
+                    """
+                    SELECT name
+                    FROM sqlite_master
+                    WHERE type = 'index'
+                      AND tbl_name = '_uploads_old'
+                      AND name NOT LIKE 'sqlite_autoindex_%'
+                    """
+                ).fetchall()
+
+                for (index_name,) in old_indexes:
+                    escaped_name = index_name.replace('"', '""')
+                    connection.exec_driver_sql(
+                        f'DROP INDEX IF EXISTS "{escaped_name}"'
+                    )
+
+                Upload.__table__.create(connection)
+
+                connection.exec_driver_sql(
+                    "INSERT INTO uploads "
+                    f"({quoted_columns}) "
+                    f"SELECT {', '.join(selected_columns)} "
+                    "FROM _uploads_old"
+                )
+
+                connection.exec_driver_sql(
+                    "DROP TABLE _uploads_old"
+                )
+
+            logger.info(
+                "Migrated uploads table to per-user hash uniqueness."
+            )
+
+        finally:
+            connection.exec_driver_sql(
+                "PRAGMA foreign_keys=ON"
+            )
+            connection.commit()
 
 def _migrate_sqlite_analysis_results(engine: Engine) -> None:
     from app.models.analysis_result import AnalysisResult

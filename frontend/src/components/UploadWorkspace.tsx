@@ -1,6 +1,9 @@
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { getUploadStatus, submitFile, submitMediaUrl } from "../services/uploadService";
+import { getUploadSummary } from "../services/dashboardService";
+import type { UploadSummary } from "../types/dashboard";
 import type { UploadStatus } from "../types/upload";
+import { isInvestigationFinished } from "../utils/investigation";
 import { Icon } from "./Icon";
 import { UploadPipelinePreview } from "./UploadPipelinePreview";
 
@@ -29,16 +32,20 @@ export function UploadWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const [uploadId, setUploadId] = useState<number | null>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus | undefined>();
+  const [summary, setSummary] = useState<UploadSummary | null>(null);
 
   useEffect(() => {
-    if (!uploadId || !uploadStatus || !["queued", "processing"].includes(uploadStatus)) return;
+    if (!uploadId || (summary && isInvestigationFinished(summary))) return;
     const interval = window.setInterval(() => {
-      getUploadStatus(uploadId)
-        .then((result) => setUploadStatus(result.status))
+      getUploadSummary(uploadId)
+        .then((result) => {
+          setSummary(result);
+          setUploadStatus(result.upload.status);
+        })
         .catch(() => window.clearInterval(interval));
     }, 4000);
     return () => window.clearInterval(interval);
-  }, [uploadId, uploadStatus]);
+  }, [uploadId, summary]);
 
   const selectFile = (file: File) => {
     const validationError = validateFile(file);
@@ -76,6 +83,12 @@ export function UploadWorkspace() {
       setUploadStatus(response.status);
       setIntakeState("started");
       setMessage(response.is_duplication ? "An existing submission was found. Its current investigation status is shown below." : response.message);
+      getUploadSummary(response.upload_id)
+        .then((result) => {
+          setSummary(result);
+          setUploadStatus(result.upload.status);
+        })
+        .catch(() => undefined);
     } catch (error) {
       setIntakeState("error");
       setMessage(error instanceof Error ? error.message : "The media could not be submitted.");
@@ -102,13 +115,14 @@ export function UploadWorkspace() {
     setUrl("");
     setUploadId(null);
     setUploadStatus(undefined);
+    setSummary(null);
     setIntakeState("idle");
     setMessage(null);
     if (fileInput.current) fileInput.current.value = "";
   };
 
-  const processingComplete = uploadStatus === "completed";
-  const processingFailed = uploadStatus === "failed";
+  const processingComplete = isInvestigationFinished(summary);
+  const processingFailed = summary ? (summary.upload.status === "failed" || summary.processing_run?.status === "failed") : (uploadStatus === "failed");
 
   return (
     <div className="upload-workspace">

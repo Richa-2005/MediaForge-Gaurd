@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, String
+from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
@@ -16,6 +16,13 @@ class UploadStatus(str, enum.Enum):
 
 class Upload(Base):
     __tablename__ = "uploads"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "sha256_hash",
+            name="uq_upload_user_sha256",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -39,7 +46,6 @@ class Upload(Base):
 
     sha256_hash: Mapped[str] = mapped_column(
         String(64),
-        unique=True,
         index=True,
     )
 

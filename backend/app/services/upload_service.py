@@ -9,6 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
 from app.models.user import User
@@ -73,8 +74,12 @@ async def store_file(uploadedFile : UploadFile):
     stored_filename = f"{media_id}{extension}"
     file_path = folder_path / stored_filename
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(uploadedFile.file, buffer)
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(uploadedFile.file, buffer)
+    except OSError:
+        shutil.rmtree(folder_path, ignore_errors=True)
+        raise
 
     return file_path
     
@@ -110,8 +115,7 @@ def upload_media(
     )
 
     db.add(upload)
-    db.commit()
-    db.refresh(upload)
+    db.flush()
 
     return upload
 
@@ -140,33 +144,66 @@ async def create_upload(
                 "is_duplication":True,
                 "message":"File Already exists in the database."
             }
-        
-        file_path = await store_file(uploadedFile)
-        uploaded_file = upload_media(
-            db,
-            uploadedFile,
-            detected_mime,
-            sha_hash,
-            file_path,
-            user,
-        )
-        
-        #Queueing the file for processing 
-        uploaded_file.status = UploadStatus.QUEUED
 
-        processing_run = ProcessingRun(
-            upload_id=uploaded_file.id,
-            status=RunStatus.RUNNING,
-            trigger=RunTrigger.UPLOAD,
-            started_at=datetime.now(timezone.utc),
-        )
-        db.add(processing_run)
-        db.commit()
-        db.refresh(uploaded_file)
-        db.refresh(processing_run)
+        file_path: Path | None = None
+        try:
+            file_path = await store_file(uploadedFile)
+            uploaded_file = upload_media(
+                db,
+                uploadedFile,
+                detected_mime,
+                sha_hash,
+                file_path,
+                user,
+            )
 
-        process_upload.delay(uploaded_file.id, processing_run.id)
-        
+            #Queueing the file for processing
+            uploaded_file.status = UploadStatus.QUEUED
+
+            processing_run = ProcessingRun(
+                upload_id=uploaded_file.id,
+                status=RunStatus.RUNNING,
+                trigger=RunTrigger.UPLOAD,
+                started_at=datetime.now(timezone.utc),
+            )
+            db.add(processing_run)
+            db.commit()
+            db.refresh(uploaded_file)
+            db.refresh(processing_run)
+
+        except IntegrityError:
+            db.rollback()
+            cleanup_stored_file(file_path)
+            existing_file = file_exists(sha_hash, db, user)
+            if existing_file:
+                return {
+                    "upload_id" : existing_file.id,
+                    "status" : existing_file.status,
+                    "media_type": existing_file.media_type,
+                    "file_path":existing_file.file_path,
+                    "is_duplication":True,
+                    "message":"File Already exists in the database."
+                }
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A matching upload already exists.",
+            )
+        except (OSError, SQLAlchemyError) as exc:
+            db.rollback()
+            cleanup_stored_file(file_path)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="The media could not be stored. Please try again.",
+            ) from exc
+
+        try:
+            process_upload.delay(uploaded_file.id, processing_run.id)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="The media was stored, but analysis could not be queued.",
+            ) from exc
+
         return {
             "upload_id" : uploaded_file.id,
             "status" : uploaded_file.status,
@@ -175,6 +212,18 @@ async def create_upload(
             "is_duplication":False,
             "message":"File uploaded and stored successfully."
         }
+
+
+def cleanup_stored_file(file_path: Path | None) -> None:
+    if file_path is None:
+        return
+
+    upload_dir = file_path.parent
+    try:
+        if upload_dir.exists() and upload_dir.is_relative_to(settings.UPLOAD_DIR):
+            shutil.rmtree(upload_dir)
+    except OSError:
+        pass
     
     
 def get_upload_status(

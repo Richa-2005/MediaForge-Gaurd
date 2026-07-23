@@ -1,4 +1,5 @@
 import type { UploadSummary } from "../types/dashboard";
+import { isInvestigationFinished } from "../utils/investigation";
 import { StatusBadge } from "./StatusBadge";
 
 function formatTimestamp(value: string) {
@@ -25,8 +26,8 @@ export function InvestigationHeader({ summary }: { summary: UploadSummary }) {
       <div className="investigation-header__status">
         <StatusBadge status={summary.upload.status} />
         {summary.processing_run && <span className="investigation-header__run">Run {summary.processing_run.status}</span>}
-        {["queued", "processing"].includes(summary.upload.status) && <a className="investigation-header__progress-link" href={`/progress?uploadId=${summary.upload.id}`}>Follow progress</a>}
-        {summary.upload.status === "completed" && <a className="investigation-header__progress-link" href={`/results?uploadId=${summary.upload.id}`}>Review results</a>}
+        {!isInvestigationFinished(summary) && <a className="investigation-header__progress-link" href={`/progress?uploadId=${summary.upload.id}`}>Follow progress</a>}
+        {isInvestigationFinished(summary) && summary.upload.status === "completed" && <a className="investigation-header__progress-link" href={`/results?uploadId=${summary.upload.id}`}>Review results</a>}
       </div>
     </header>
   );
