@@ -10,6 +10,17 @@ function redirectTarget() {
   return requested && requested.startsWith("/") ? requested : "/dashboard";
 }
 
+function initialAuthMessage() {
+  const reason = new URLSearchParams(window.location.search).get("reason");
+  if (reason === "session-expired") {
+    return "Your session expired. Sign in again to continue.";
+  }
+  if (reason === "auth-required") {
+    return "Sign in to continue to that page.";
+  }
+  return null;
+}
+
 export function AuthPage() {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<AuthMode>(
@@ -18,7 +29,7 @@ export function AuthPage() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialAuthMessage);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const copy = useMemo(
@@ -92,7 +103,7 @@ export function AuthPage() {
                   <input
                     autoComplete="name"
                     value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
+                    onChange={(event) => { setFullName(event.target.value); setError(null); }}
                     placeholder="Media Analyst"
                   />
                 </label>
@@ -105,7 +116,7 @@ export function AuthPage() {
                   type="email"
                   autoComplete="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => { setEmail(event.target.value); setError(null); }}
                   placeholder="analyst@example.com"
                 />
               </label>
@@ -118,7 +129,7 @@ export function AuthPage() {
                   minLength={mode === "register" ? 8 : 1}
                   autoComplete={mode === "register" ? "new-password" : "current-password"}
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => { setPassword(event.target.value); setError(null); }}
                   placeholder={mode === "register" ? "At least 8 characters" : "Password"}
                 />
               </label>

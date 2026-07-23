@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
@@ -9,6 +9,7 @@ BACKEND_ROOT = REPOSITORY_ROOT / "backend"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Media Sentinel"
+    ENVIRONMENT: str = "development"
     API_V1_PREFIX: str = "/api/v1"
     DATABASE_URL: str = f"sqlite:///{REPOSITORY_ROOT / 'media_sentinel.db'}"
     BASE_DIR: Path = BACKEND_ROOT
@@ -45,6 +46,18 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self):
+        if (
+            self.ENVIRONMENT.lower() == "production"
+            and self.JWT_SECRET_KEY.get_secret_value()
+            == "change-me-in-production"
+        ):
+            raise ValueError(
+                "JWT_SECRET_KEY must be set to a secure value in production."
+            )
+        return self
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",

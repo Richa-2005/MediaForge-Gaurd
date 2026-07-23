@@ -40,7 +40,7 @@ function AuthGate({ children }: { children: ReactElement }) {
 
   if (status === "anonymous") {
     const redirect = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-    window.location.replace(`/login?redirect=${redirect}`);
+    window.location.replace(`/login?redirect=${redirect}&reason=auth-required`);
     return (
       <div className="site-shell">
         <main>

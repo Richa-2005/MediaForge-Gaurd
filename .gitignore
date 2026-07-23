@@ -29,6 +29,8 @@ htmlcov/
 .env.*
 !.env.example
 !.env.sample
+!**/.env.example
+!**/.env.sample
 
 # Local databases and broker state
 *.db
