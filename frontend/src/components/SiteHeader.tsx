@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../auth/AuthContext";
 import { BrandMark } from "./BrandMark";
 import { Icon } from "./Icon";
 
@@ -9,6 +10,7 @@ const links = [
 ];
 
 export function SiteHeader() {
+  const { status, user, signOut } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -40,6 +42,20 @@ export function SiteHeader() {
           <Icon name="arrow" size={16} />
         </a>
 
+        <div className="auth-nav">
+          {status === "authenticated" ? (
+            <>
+              <span>{user?.full_name || user?.email}</span>
+              <button className="quiet-button" type="button" onClick={signOut}>Sign out</button>
+            </>
+          ) : (
+            <>
+              <a href="/login">Sign in</a>
+              <a href="/register">Register</a>
+            </>
+          )}
+        </div>
+
         <button
           className="menu-button"
           type="button"
@@ -61,6 +77,16 @@ export function SiteHeader() {
           <a className="button button--primary" href="/upload" tabIndex={isMenuOpen ? 0 : -1} onClick={closeMenu}>
             Upload &amp; Analyze <Icon name="arrow" size={16} />
           </a>
+          {status === "authenticated" ? (
+            <button className="quiet-button mobile-auth-action" type="button" tabIndex={isMenuOpen ? 0 : -1} onClick={signOut}>
+              Sign out
+            </button>
+          ) : (
+            <div className="mobile-auth-links">
+              <a href="/login" tabIndex={isMenuOpen ? 0 : -1} onClick={closeMenu}>Sign in</a>
+              <a href="/register" tabIndex={isMenuOpen ? 0 : -1} onClick={closeMenu}>Register</a>
+            </div>
+          )}
         </nav>
       </div>
     </header>
