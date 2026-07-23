@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_current_user
 from app.database.session import get_db
+from app.models.user import User
 from app.services.query_service import (
     build_upload_view,
     get_processing_timeline,
@@ -27,8 +29,9 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 def upload_summary(
     upload_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    summary = build_upload_view(upload_id, db)
+    summary = build_upload_view(upload_id, db, current_user.id)
 
     if summary is None:
         raise HTTPException(
@@ -69,8 +72,9 @@ def upload_summary(
 def upload_timeline(
     upload_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    timeline = get_processing_timeline(upload_id, db)
+    timeline = get_processing_timeline(upload_id, db, current_user.id)
 
     if timeline is None:
         raise HTTPException(
@@ -98,8 +102,9 @@ def upload_timeline(
 def upload_analysis(
     upload_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    result =  get_analysis_summary(upload_id, db)
+    result =  get_analysis_summary(upload_id, db, current_user.id)
     return [
         AnalysisResultResponse.model_validate(
             analysis, from_attributes=True
@@ -114,8 +119,9 @@ def upload_analysis(
 def upload_artifacts(
     upload_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    artifacts= get_artifacts(upload_id, db)
+    artifacts= get_artifacts(upload_id, db, current_user.id)
     return [
         ProcessingArtifactResponse.model_validate(
             artifact, from_attributes=True
@@ -130,8 +136,9 @@ def upload_artifacts(
 def recent_uploads(
     limit: int = 5,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    recent_upload= get_recent_uploads(db, limit)
+    recent_upload= get_recent_uploads(db, limit, current_user.id)
     return [
         UploadResponse.model_validate(
             upload, from_attributes=True

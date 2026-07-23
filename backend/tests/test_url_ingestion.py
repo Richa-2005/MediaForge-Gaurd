@@ -10,12 +10,14 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.api.v1 import uploads
+from app.api.dependencies import get_current_user
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.database.session import get_db
 from app.models.base import Base
 from app.models.processing_run import ProcessingRun
 from app.models.upload import Upload
+from app.models.user import User
 from app.services import url_ingestion_service as service
 
 
@@ -49,11 +51,12 @@ def run(coroutine):
 async def ingest_with_handler(monkeypatch, url, handler):
     captured = {}
 
-    async def fake_create_upload(upload, db):
+    async def fake_create_upload(upload, db, user=None):
         captured["bytes"] = await upload.read()
         captured["content_type"] = upload.content_type
         captured["filename"] = upload.filename
         captured["db"] = db
+        captured["user"] = user
         return {
             "upload_id": 12,
             "status": "queued",
@@ -327,14 +330,18 @@ def test_local_and_private_addresses_are_rejected(monkeypatch, url):
 
 
 def test_endpoint_uses_url_ingestion_service(monkeypatch):
-    async def fake_ingest(url, db):
+    current_user = User(id=7, email="analyst@example.com")
+
+    async def fake_ingest(url, db, user):
         assert url == "https://media.example/image.jpg"
+        assert user is current_user
         return {"upload_id": 3, "status": "queued"}
 
     monkeypatch.setattr(uploads, "ingest_media_url", fake_ingest)
     app = FastAPI()
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
     app.dependency_overrides[get_db] = lambda: Mock()
+    app.dependency_overrides[get_current_user] = lambda: current_user
 
     with TestClient(app) as client:
         response = client.post(

@@ -11,7 +11,39 @@ def migrate_database_schema(engine: Engine) -> None:
     if engine.dialect.name != "sqlite":
         return
 
+    _migrate_sqlite_uploads(engine)
     _migrate_sqlite_analysis_results(engine)
+
+
+def _migrate_sqlite_uploads(engine: Engine) -> None:
+    with engine.connect() as connection:
+        table_sql = connection.scalar(
+            text(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'uploads'"
+            )
+        )
+
+        if table_sql is None:
+            return
+
+        columns = {
+            column["name"]
+            for column in inspect(connection).get_columns("uploads")
+        }
+
+        if "user_id" in columns:
+            return
+
+        connection.exec_driver_sql(
+            "ALTER TABLE uploads ADD COLUMN user_id INTEGER"
+        )
+        connection.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS ix_uploads_user_id "
+            "ON uploads (user_id)"
+        )
+        connection.commit()
+        logger.info("Migrated uploads table with nullable user_id.")
 
 
 def _migrate_sqlite_analysis_results(engine: Engine) -> None:

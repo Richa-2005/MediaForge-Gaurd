@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from starlette.datastructures import Headers
 
 from app.core.config import settings
+from app.models.user import User
 from app.services.upload_service import (
     MIME_EXTENSIONS,
     create_upload,
@@ -51,6 +52,7 @@ class MediaValidationError(URLIngestionError):
 async def ingest_media_url(
     url: str,
     db: Session,
+    user: User | None = None,
     *,
     client: httpx.AsyncClient | None = None,
 ):
@@ -76,7 +78,7 @@ async def ingest_media_url(
             filename=filename,
             headers=Headers({"content-type": detected_mime}),
         )
-        return await create_upload(upload, db)
+        return await create_upload(upload, db, user)
     finally:
         temporary_file.close()
 

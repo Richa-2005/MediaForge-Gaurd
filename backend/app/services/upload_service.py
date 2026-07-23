@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
+from app.models.user import User
 from app.tasks.upload_tasks import process_upload
 
 
@@ -91,10 +92,12 @@ async def calculate_hash(uploadedFile : UploadFile) -> str:
 def upload_media(
         db: Session,uploadedFile : UploadFile, 
         detected_mime : str,sha_hash : str,
-        file_path : str
+        file_path : str,
+        user: User | None = None,
     ):
     
     upload = Upload(
+        user_id=user.id if user else None,
         original_filename=uploadedFile.filename,
         stored_filename=str(file_path).split('/')[-1],
         file_path=str(file_path),
@@ -112,15 +115,21 @@ def upload_media(
 
     return upload
 
-def file_exists(sha_hash:str,db:Session):
+def file_exists(sha_hash: str, db: Session, user: User | None = None):
     query = select(Upload).where(Upload.sha256_hash == sha_hash)
+    if user is not None:
+        query = query.where(Upload.user_id == user.id)
     existing_file = db.scalar(query)
     return existing_file
 
-async def create_upload(uploadedFile : UploadFile,db : Session):
+async def create_upload(
+        uploadedFile: UploadFile,
+        db: Session,
+        user: User | None = None,
+):
         detected_mime = await validating_file(uploadedFile)
         sha_hash = await calculate_hash(uploadedFile)
-        existing_file =  file_exists(sha_hash,db)
+        existing_file =  file_exists(sha_hash, db, user)
         
         if existing_file:
             return {
@@ -133,7 +142,14 @@ async def create_upload(uploadedFile : UploadFile,db : Session):
             }
         
         file_path = await store_file(uploadedFile)
-        uploaded_file = upload_media(db,uploadedFile,detected_mime,sha_hash,file_path)
+        uploaded_file = upload_media(
+            db,
+            uploadedFile,
+            detected_mime,
+            sha_hash,
+            file_path,
+            user,
+        )
         
         #Queueing the file for processing 
         uploaded_file.status = UploadStatus.QUEUED
@@ -161,8 +177,14 @@ async def create_upload(uploadedFile : UploadFile,db : Session):
         }
     
     
-def get_upload_status( upload_id:int,db: Session):
+def get_upload_status(
+    upload_id: int,
+    db: Session,
+    user: User | None = None,
+):
     query = select(Upload).where(Upload.id== upload_id)
+    if user is not None:
+        query = query.where(Upload.user_id == user.id)
     response = db.scalar(query)
 
     return response

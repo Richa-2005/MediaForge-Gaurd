@@ -4,10 +4,12 @@ from sqlalchemy.schema import CreateTable
 from app.database.migrations import migrate_database_schema
 from app.models.analysis_result import AnalysisResult
 from app.models.upload import Upload
+from app.models.user import User
 
 
 def test_legacy_analysis_constraints_are_migrated(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    User.__table__.create(engine)
     Upload.__table__.create(engine)
     current_ddl = str(CreateTable(AnalysisResult.__table__).compile(engine))
     legacy_ddl = current_ddl.replace(

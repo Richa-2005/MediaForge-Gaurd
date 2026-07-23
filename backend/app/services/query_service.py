@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def build_upload_view(upload_id: int, db: Session):
+def build_upload_view(upload_id: int, db: Session, user_id: int | None = None):
     """
     Returns the complete view of an upload.
     Used by the dashboard.
@@ -19,7 +19,11 @@ def build_upload_view(upload_id: int, db: Session):
 
     summary = {}
 
-    upload = db.get(Upload, upload_id)
+    upload_query = select(Upload).where(Upload.id == upload_id)
+    if user_id is not None:
+        upload_query = upload_query.where(Upload.user_id == user_id)
+
+    upload = db.scalar(upload_query)
 
     if upload is None:
         return None
@@ -70,10 +74,21 @@ def build_upload_view(upload_id: int, db: Session):
     return summary
 
 
-def get_processing_timeline(upload_id: int, db: Session):
+def get_processing_timeline(
+    upload_id: int,
+    db: Session,
+    user_id: int | None = None,
+):
     """
     Returns only the processing timeline.
     """
+
+    upload_query = select(Upload.id).where(Upload.id == upload_id)
+    if user_id is not None:
+        upload_query = upload_query.where(Upload.user_id == user_id)
+
+    if db.scalar(upload_query) is None:
+        return None
 
     run = db.scalar(
         select(ProcessingRun)
@@ -100,10 +115,21 @@ def get_processing_timeline(upload_id: int, db: Session):
     }
 
 
-def get_analysis_summary(upload_id: int, db: Session):
+def get_analysis_summary(
+    upload_id: int,
+    db: Session,
+    user_id: int | None = None,
+):
     """
     Returns all AI analysis results for an upload.
     """
+
+    upload_query = select(Upload.id).where(Upload.id == upload_id)
+    if user_id is not None:
+        upload_query = upload_query.where(Upload.user_id == user_id)
+
+    if db.scalar(upload_query) is None:
+        return []
 
     return db.scalars(
         select(AnalysisResult)
@@ -114,10 +140,21 @@ def get_analysis_summary(upload_id: int, db: Session):
     ).all()
 
 
-def get_artifacts(upload_id: int, db: Session):
+def get_artifacts(
+    upload_id: int,
+    db: Session,
+    user_id: int | None = None,
+):
     """
     Returns all preprocessing artifacts.
     """
+
+    upload_query = select(Upload.id).where(Upload.id == upload_id)
+    if user_id is not None:
+        upload_query = upload_query.where(Upload.user_id == user_id)
+
+    if db.scalar(upload_query) is None:
+        return []
 
     return db.scalars(
         select(ProcessingArtifact)
@@ -128,13 +165,19 @@ def get_artifacts(upload_id: int, db: Session):
     ).all()
 
 
-def get_recent_uploads(db: Session, limit: int = 5):
+def get_recent_uploads(
+    db: Session,
+    limit: int = 5,
+    user_id: int | None = None,
+):
     """
     Returns the most recent uploads.
     """
 
+    query = select(Upload)
+    if user_id is not None:
+        query = query.where(Upload.user_id == user_id)
+
     return db.scalars(
-        select(Upload)
-        .order_by(desc(Upload.created_at))
-        .limit(limit)
+        query.order_by(desc(Upload.created_at)).limit(limit)
     ).all()

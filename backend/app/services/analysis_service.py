@@ -8,6 +8,7 @@ from pathlib import Path
 
 from app.models.processing_artifacts import ProcessingArtifact
 from app.models.analysis_result import AgentName
+from app.models.upload import Upload
 
 from ai_workers.src.agents.analysis_agent import AnalysisAgent
 from ai_workers.src.schemas.agent_result import AgentResult
@@ -68,7 +69,17 @@ def save_analysis_result(analysis: dict, db: Session):
     return analysis_row
 
 
-def get_upload_results(upload_id: int,db: Session):
+def get_upload_results(
+    upload_id: int,
+    db: Session,
+    user_id: int | None = None,
+):
+    upload_query = select(Upload.id).where(Upload.id == upload_id)
+    if user_id is not None:
+        upload_query = upload_query.where(Upload.user_id == user_id)
+
+    if db.scalar(upload_query) is None:
+        return None
     
     query = select(AnalysisResult).where(
         AnalysisResult.upload_id == upload_id
@@ -78,10 +89,19 @@ def get_upload_results(upload_id: int,db: Session):
     return analysis_rows
 
 
-def get_analysis_result(analysis_id: int, db: Session):
+def get_analysis_result(
+    analysis_id: int,
+    db: Session,
+    user_id: int | None = None,
+):
     query = select(AnalysisResult).where(
         AnalysisResult.id == analysis_id
     )
+    if user_id is not None:
+        query = query.join(
+            Upload,
+            AnalysisResult.upload_id == Upload.id,
+        ).where(Upload.user_id == user_id)
     analysis_row = db.scalar(query)
     return analysis_row
 
