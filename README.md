@@ -1,7 +1,7 @@
 # MediaForge Guard
 
 <p align="center">
-  <img src="assets/hero.svg" alt="MediaForge-Guard Architecture" width="100%">
+  <img src="./assests/hero.svg" alt="MediaForge-Guard Architecture" width="100%">
 </p>
 
 <p align="center">
