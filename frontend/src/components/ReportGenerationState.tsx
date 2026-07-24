@@ -1,6 +1,7 @@
 import type { UploadSummary } from "../types/dashboard";
 import { getPrimaryResult } from "../utils/investigation";
 import { StatusBadge } from "./StatusBadge";
+import { ReportAssemblyIllustration } from "./InvestigationMotionIllustrations";
 
 export function ReportGenerationState({ summary }: { summary: UploadSummary }) {
   const primaryResult = getPrimaryResult(summary);
@@ -28,6 +29,7 @@ export function ReportGenerationState({ summary }: { summary: UploadSummary }) {
 
   return (
     <section className="report-generation scroll-reveal" aria-labelledby="report-generation-title">
+      <ReportAssemblyIllustration />
       <div><p className="eyebrow">Structured report</p><h2 id="report-generation-title">The final investigation record.</h2><p>{message}</p></div>
       <div className="report-generation__action">
         <StatusBadge status={status} />

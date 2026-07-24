@@ -1,6 +1,9 @@
+import { EvidenceJudgmentIllustration } from "./EvidenceJudgmentIllustration";
+
 export function InterpretationSection() {
   return (
     <section className="interpretation section" aria-labelledby="interpretation-title">
+      <EvidenceJudgmentIllustration />
       <div className="container interpretation__content scroll-reveal">
         <div className="interpretation__label">
           <span aria-hidden="true" />

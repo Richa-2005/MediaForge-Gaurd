@@ -1,4 +1,5 @@
 import type { AnalysisResult, Evidence, ProcessingArtifact, UploadSummary } from "../types/dashboard";
+import { StateIllustration } from "./StateIllustration";
 
 type EvidenceEntry = Evidence & { agent: AnalysisResult["agent"]; resultId: number };
 
@@ -24,7 +25,7 @@ export function EvidenceFindings({ summary }: { summary: UploadSummary }) {
   return (
     <section className="evidence-findings scroll-reveal" aria-labelledby="evidence-findings-title">
       <div className="evidence-findings__heading"><div><p className="eyebrow">Evidence & findings</p><h2 id="evidence-findings-title">What the investigation has returned.</h2></div><span>{evidence.length} evidence item{evidence.length === 1 ? "" : "s"}</span></div>
-      {evidence.length > 0 ? <div className="evidence-findings__grid">{evidence.map((item, index) => <EvidenceCard key={`${item.resultId}-${item.method ?? "evidence"}-${index}`} evidence={item} />)}</div> : <p className="dashboard-empty">No evidence has been returned by the available analysis results yet.</p>}
+      {evidence.length > 0 ? <div className="evidence-findings__grid">{evidence.map((item, index) => <EvidenceCard key={`${item.resultId}-${item.method ?? "evidence"}-${index}`} evidence={item} />)}</div> : <div className="dashboard-empty dashboard-empty--illustrated"><StateIllustration kind="evidence" /><p>No evidence has been returned by the available analysis results yet.</p></div>}
       {summary.artifacts.length > 0 && <div className="artifact-area"><p className="artifact-area__label">Processing artifacts</p><div>{summary.artifacts.map((artifact) => <ArtifactCard key={artifact.id} artifact={artifact} />)}</div></div>}
     </section>
   );

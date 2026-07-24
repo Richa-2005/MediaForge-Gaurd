@@ -1,5 +1,6 @@
 import type { AnalysisResult, UploadSummary } from "../types/dashboard";
 import { StatusBadge } from "./StatusBadge";
+import { StateIllustration } from "./StateIllustration";
 
 function primaryResult(results: AnalysisResult[]) {
   return results.find((result) => result.agent === "supervisor")
@@ -14,7 +15,7 @@ export function ResultsSummaryCard({ summary }: { summary: UploadSummary }) {
   const findings = report?.key_findings ?? [];
 
   if (!primary) {
-    return <section className="results-incomplete scroll-reveal" aria-labelledby="results-incomplete-title"><div><p className="eyebrow">Investigation summary</p><h2 id="results-incomplete-title">Analysis results are not available yet.</h2><p>The submission record exists, but the backend has not returned any analysis result for it.</p></div><a className="button button--primary" href={`/progress?uploadId=${summary.upload.id}`}>Follow progress</a></section>;
+    return <section className="results-incomplete scroll-reveal" aria-labelledby="results-incomplete-title"><StateIllustration kind="results" /><div><p className="eyebrow">Investigation summary</p><h2 id="results-incomplete-title">Analysis results are not available yet.</h2><p>The submission record exists, but the backend has not returned any analysis result for it.</p></div><a className="button button--primary" href={`/progress?uploadId=${summary.upload.id}`}>Follow progress</a></section>;
   }
 
   return (

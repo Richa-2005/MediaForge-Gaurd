@@ -5,6 +5,7 @@ import type { UploadSummary } from "../types/dashboard";
 import type { UploadStatus } from "../types/upload";
 import { isInvestigationFinished } from "../utils/investigation";
 import { Icon } from "./Icon";
+import { MediaPassportIllustration } from "./MediaPassportIllustration";
 import { UploadPipelinePreview } from "./UploadPipelinePreview";
 
 type IntakeState = "idle" | "uploading" | "accepted" | "invalid" | "started" | "error";
@@ -123,6 +124,11 @@ export function UploadWorkspace() {
 
   const processingComplete = isInvestigationFinished(summary);
   const processingFailed = summary ? (summary.upload.status === "failed" || summary.processing_run?.status === "failed") : (uploadStatus === "failed");
+  const passportMode = intakeState === "uploading" || intakeState === "started"
+    ? "processing"
+    : selectedFile || url.trim()
+      ? "ready"
+      : "idle";
 
   return (
     <div className="upload-workspace">
@@ -146,6 +152,7 @@ export function UploadWorkspace() {
           onDrop={handleDrop}
         >
           <input ref={fileInput} id="media-file" className="visually-hidden" type="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.mp3,.wav,.txt" onChange={handleFileChange} />
+          <MediaPassportIllustration mode={passportMode} />
           {!selectedFile && intakeState !== "uploading" && intakeState !== "started" && (
             <div className="dropzone__idle">
               <span className="dropzone__illustration" aria-hidden="true"><Icon name="image" size={32} /><Icon name="video" size={26} /><Icon name="audio" size={26} /><Icon name="text" size={26} /></span>

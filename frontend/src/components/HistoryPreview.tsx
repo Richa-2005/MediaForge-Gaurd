@@ -1,11 +1,12 @@
 import type { UploadSummary } from "../types/dashboard";
 import { getPrimaryResult, isInvestigationFinished } from "../utils/investigation";
 import { StatusBadge } from "./StatusBadge";
+import { StateIllustration } from "./StateIllustration";
 
 export function HistoryPreview({ summary, loading, error }: { summary: UploadSummary | null; loading: boolean; error: string | null }) {
   if (loading) return <aside className="history-preview history-preview--loading" aria-label="Loading selected investigation"><span /><span /><span /></aside>;
   if (error) return <aside className="history-preview history-preview--message"><p role="alert">{error}</p></aside>;
-  if (!summary) return <aside className="history-preview history-preview--message"><p>Select a returned submission to inspect its available summary.</p></aside>;
+  if (!summary) return <aside className="history-preview history-preview--message"><StateIllustration kind="archive" /><p>Select a returned submission to inspect its available summary.</p></aside>;
 
   const result = getPrimaryResult(summary);
   const isFinished = isInvestigationFinished(summary);

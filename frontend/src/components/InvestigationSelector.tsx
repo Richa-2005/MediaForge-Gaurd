@@ -1,5 +1,6 @@
 import type { UploadRecord } from "../types/upload";
 import { StatusBadge } from "./StatusBadge";
+import { InvestigationBoardBackdrop } from "./InvestigationBoardBackdrop";
 
 type InvestigationSelectorProps = {
   uploads: UploadRecord[] | null;
@@ -12,6 +13,7 @@ type InvestigationSelectorProps = {
 export function InvestigationSelector({ uploads, selectedId, onSelect, loading, error }: InvestigationSelectorProps) {
   return (
     <section className="investigation-selector" aria-labelledby="investigation-selector-title">
+      <InvestigationBoardBackdrop />
       <div className="investigation-selector__heading">
         <div>
           <p className="eyebrow">Investigation dashboard</p>

@@ -1,10 +1,11 @@
 import { Icon } from "./Icon";
+import { MediaPathIllustration } from "./MediaPathIllustration";
 
 const paths = [
-  { title: "Image", copy: "Visual forensic analysis and processed-image metadata.", icon: "image" as const },
-  { title: "Video", copy: "Frame extraction and frame-based visual analysis.", icon: "video" as const },
-  { title: "Audio", copy: "Audio forensic analysis and available audio signals.", icon: "audio" as const },
-  { title: "Text", copy: "Text analysis, claim verification, and supervisory fusion when available.", icon: "text" as const },
+  { title: "Image", copy: "Visual forensic analysis and processed-image metadata.", icon: "image" as const, visual: "image" as const },
+  { title: "Video", copy: "Frame extraction and frame-based visual analysis.", icon: "video" as const, visual: "video" as const },
+  { title: "Audio", copy: "Audio forensic analysis and available audio signals.", icon: "audio" as const, visual: "audio" as const },
+  { title: "Text", copy: "Text analysis, claim verification, and supervisory fusion when available.", icon: "text" as const, visual: "text" as const },
 ];
 
 export function AnalysisCoverage() {
@@ -20,6 +21,7 @@ export function AnalysisCoverage() {
           <div className="coverage-grid">
             {paths.map((path) => (
               <article className="coverage-item" key={path.title}>
+                <MediaPathIllustration type={path.visual} />
                 <span className="coverage-item__icon"><Icon name={path.icon} size={21} /></span>
                 <h3>{path.title}</h3>
                 <p>{path.copy}</p>
