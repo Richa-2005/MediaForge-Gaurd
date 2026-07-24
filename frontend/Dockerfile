@@ -11,6 +11,7 @@ RUN npm run build
 FROM nginx:1.27-alpine
 
 ENV API_ORIGIN=http://api:8000
+ENV NGINX_ENVSUBST_FILTER=API_ORIGIN
 
 COPY frontend/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
