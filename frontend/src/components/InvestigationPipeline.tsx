@@ -6,12 +6,19 @@ type PipelineState = "completed" | "current" | "pending" | "failed";
 
 function pipelineState(summary: UploadSummary, index: number): PipelineState {
   const preprocessing = summary.processing_steps.find((step) => step.step_name === "preprocessing");
+  const failedStep = summary.processing_steps.find((step) => step.status === "failed");
+  const allRecordedStepsCompleted = summary.processing_steps.length > 0 && summary.processing_steps.every((step) => step.status === "completed");
   const hasAnalyses = summary.analysis_results.length > 0;
   const hasEvidence = summary.analysis_results.some((result) => result.evidence?.length) || summary.artifacts.length > 0;
   const hasAssessment = summary.analysis_results.some((result) => typeof result.confidence === "number" && typeof result.risk_score === "number");
   const primaryResult = getPrimaryResult(summary);
 
-  if (summary.upload.status === "failed" || summary.processing_run?.status === "failed" || preprocessing?.status === "failed") return index <= 2 ? "failed" : "pending";
+  if (allRecordedStepsCompleted && summary.upload.status === "completed" && index < 5) return "completed";
+  if (summary.upload.status === "failed" || summary.processing_run?.status === "failed" || failedStep) {
+    const failedIndex = failedStep?.step_name === "preprocessing" ? 2 : failedStep ? 3 : 0;
+    if (index < failedIndex) return "completed";
+    return index === failedIndex ? "failed" : "pending";
+  }
   const states: PipelineState[] = [
     "completed",
     "completed",

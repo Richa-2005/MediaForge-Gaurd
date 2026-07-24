@@ -1,11 +1,7 @@
 import type { UploadSummary } from "../types/dashboard";
+import { formatTimestamp } from "../utils/dateTime";
 import { isInvestigationFinished } from "../utils/investigation";
 import { StatusBadge } from "./StatusBadge";
-
-function formatTimestamp(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Timestamp unavailable" : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
 
 export function InvestigationHeader({ summary }: { summary: UploadSummary }) {
   const step = summary.processing_steps.find((item) => item.status === "running")

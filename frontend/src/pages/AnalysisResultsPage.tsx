@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { AnalysisBreakdown } from "../components/AnalysisBreakdown";
 import { EvidenceFindings } from "../components/EvidenceFindings";
+import { EvidenceMap } from "../components/EvidenceMap";
+import { ForensicTimeline } from "../components/ForensicTimeline";
 import { ReportPreview } from "../components/ReportPreview";
+import { ResultsActionBar } from "../components/ResultsActionBar";
+import { ResultsCaseFile } from "../components/ResultsCaseFile";
 import { ResultsHeader } from "../components/ResultsHeader";
 import { ResultsSummaryCard } from "../components/ResultsSummaryCard";
 import { SiteFooter } from "../components/SiteFooter";
@@ -44,7 +48,7 @@ export function AnalysisResultsPage() {
         {!uploadId && <section className="progress-empty section"><div className="container"><p className="eyebrow">Analysis results</p><h1>Choose an investigation to review.</h1><p>Results become available after MediaForge Guard returns an upload ID and analysis output.</p><a className="button button--primary" href="/dashboard">Open dashboard</a></div></section>}
         {uploadId && !summary && !error && <section className="dashboard-loading section"><div className="container"><span /><span /><span /></div></section>}
         {error && <section className="dashboard-error section"><div className="container"><p role="alert">{error}</p></div></section>}
-        {summary && <section className="results-page__workspace section"><div className="container results-workspace"><ResultsHeader summary={summary} /><ResultsSummaryCard summary={summary} /><EvidenceFindings summary={summary} /><AnalysisBreakdown summary={summary} /><ReportPreview summary={summary} /></div></section>}
+        {summary && <><ResultsActionBar summary={summary} /><section className="results-page__workspace section"><div className="container results-workspace"><ResultsHeader summary={summary} /><ResultsCaseFile summary={summary} /><section id="investigation-summary"><ResultsSummaryCard summary={summary} /></section><EvidenceMap summary={summary} /><ForensicTimeline summary={summary} /><EvidenceFindings summary={summary} /><AnalysisBreakdown summary={summary} /><ReportPreview summary={summary} /></div></section></>}
       </main>
       <SiteFooter />
     </div>

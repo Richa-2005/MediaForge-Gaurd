@@ -1,0 +1,63 @@
+# Git and local metadata
+.git
+.gitignore
+.DS_Store
+Thumbs.db
+__MACOSX__
+
+# Secrets and local environment files
+.env
+.env.*
+!*.env.example
+!**/.env.example
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+
+# Test, lint, type, and coverage output
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node dependencies and frontend build output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local databases, broker state, logs, and generated media
+*.db
+*.sqlite
+*.sqlite3
+*.rdb
+dump.rdb
+logs/
+backend/logs/
+*.log
+backend/storage/uploads/
+backend/storage/processing/
+ai_workers/outputs/
+ai_workers/temp/
+
+# Local-only generated data
+datasets/
+ai_workers/testing/
+hero-builder-v2/

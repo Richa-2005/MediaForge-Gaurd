@@ -37,35 +37,38 @@ export const architectureLayers = [
 
 export const technologyGroups = [
   { title: "Frontend", items: ["React", "TypeScript", "Vite"] },
-  { title: "Backend", items: ["FastAPI", "SQLAlchemy", "Pydantic"] },
-  { title: "AI / ML", items: ["OpenCV", "NumPy", "spaCy", "Transformers", "PyTorch", "LangGraph", "Ollama / Groq"] },
-  { title: "Database", items: ["SQLite"] },
-  { title: "Infrastructure", items: ["Celery", "Redis"] },
+  { title: "Backend", items: ["FastAPI", "Uvicorn", "SQLAlchemy", "Pydantic", "Pydantic Settings", "HTTPX"] },
+  { title: "AI / ML", items: ["OpenCV", "NumPy", "scikit-learn", "spaCy", "PyTorch", "TorchVision", "Transformers", "Sentence Transformers"] },
+  { title: "Media forensics", items: ["Pillow", "python-magic", "Librosa", "MoviePy", "OpenAI Whisper"] },
+  { title: "Text verification", items: ["LangDetect", "NLTK", "Wikipedia"] },
+  { title: "Reporting", items: ["LangGraph", "LangChain Core", "Ollama", "Groq"] },
+  { title: "Infrastructure", items: ["Celery", "Redis", "SQLite"] },
 ] as const;
 
 export const teamMembers: TeamMember[] = [
   {
     name: "Richa Gupta",
-    role: "Repository contributor",
-    bio: "Identified as a contributor in the project commit history.",
-    responsibilities: ["Project source contributions"],
+    role: "Project contributor",
+    bio: "",
+    responsibilities: ["Backend & AI Systems"],
     initials: "RG",
-    profiles: [],
+    profiles: [{ label: "GitHub", href: "https://github.com/Richa-2005" }],
   },
   {
-    name: "Rashmijha06",
-    role: "Repository contributor",
-    bio: "Identified as a contributor in the project commit history.",
-    responsibilities: ["Project source contributions"],
+    name: "Rashmi Jha",
+    role: "Project contributor",
+    bio: "",
+    responsibilities: ["AI & Machine Learning"],
     initials: "RJ",
     profiles: [{ label: "GitHub", href: "https://github.com/Rashmijha06" }],
   },
 ];
 
 export const roadmapItems = [
-  { title: "Improved multimodal reasoning", detail: "Broaden coordination between available media-specific findings." },
-  { title: "Expanded verification sources", detail: "Extend the set of sources used by text verification paths." },
-  { title: "Scalable deployment", detail: "Prepare the processing architecture for a larger operational footprint." },
-  { title: "Additional media pipelines", detail: "Evaluate further specialist paths as they are implemented." },
-  { title: "Enterprise integrations", detail: "Explore integrations only after the required backend interfaces exist." },
+  { title: "Adaptive evidence fusion", detail: "Strengthen cross-modal reasoning to produce more consistent verdicts across text, image, audio, and video analysis." },
+  { title: "Trusted source expansion", detail: "Integrate additional verified news, fact-checking, and knowledge repositories for richer evidence retrieval." },
+  { title: "Explainable AI insights", detail: "Provide transparent confidence breakdowns, forensic evidence attribution, and model decision explanations." },
+  { title: "Real-time monitoring", detail: "Support continuous scanning of live media streams and URLs for emerging misinformation campaigns." },
+  { title: "Model observability", detail: "Track per-agent runtime, detection confidence, evidence quality, and system performance through operational dashboards." },
+  { title: "Scalable analysis pipeline", detail: "Expand specialized AI agents for advanced video forensics, audio tampering detection, metadata analysis, and multilingual verification." },
 ] as const;

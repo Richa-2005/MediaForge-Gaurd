@@ -11,12 +11,10 @@ export function TeamSection() {
   return (
     <section className="case-team section" aria-labelledby="case-team-title">
       <div className="container">
-        <div className="case-team__heading"><p className="eyebrow">Meet the engineers</p><h2 id="case-team-title">The people recorded in the project history.</h2><p>Contributor information is held in one project-data file, so names, biographies, responsibilities, portraits, and profile links can be updated without changing the page structure.</p></div>
+        <div className="case-team__heading"><p className="eyebrow">Meet the engineers</p><h2 id="case-team-title">The people recorded in the project history.</h2></div>
         <div className="team-grid">
           {teamMembers.map((member) => <article className="team-card scroll-reveal" key={member.name}>
-            <div className="team-card__portrait" aria-label={`Portrait placeholder for ${member.name}`} role="img"><span>{member.initials}</span></div>
             <div className="team-card__identity"><p>{member.role}</p><h3>{member.name}</h3></div>
-            <p className="team-card__bio">{member.bio}</p>
             <div className="team-card__responsibilities"><span>Primary responsibility</span><ul>{member.responsibilities.map((item) => <li key={item}>{item}</li>)}</ul></div>
             {member.profiles.length > 0 && <div className="team-card__profiles" aria-label={`${member.name} profiles`}>{member.profiles.map((profile) => <a href={profile.href} target="_blank" rel="noreferrer" key={profile.label}><ProfileGlyph label={profile.label} /><span>{profile.label}</span><span className="sr-only"> (opens in a new tab)</span></a>)}</div>}
           </article>)}

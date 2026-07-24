@@ -13,7 +13,9 @@ function renderMetadata(metadata: Record<string, unknown> | undefined) {
 }
 
 function EvidenceCard({ evidence }: { evidence: EvidenceEntry }) {
-  return <article className="evidence-card"><div className="evidence-card__top"><span>{evidence.agent}</span>{evidence.method && <strong>{evidence.method}</strong>}</div>{evidence.summary && <p>{evidence.summary}</p>}<div className="evidence-card__scores">{typeof evidence.score === "number" && <span>Score {Math.round(evidence.score * 100)}%</span>}{typeof evidence.confidence === "number" && <span>Confidence {Math.round(evidence.confidence * 100)}%</span>}</div>{renderMetadata(evidence.metadata)}</article>;
+  const score = typeof evidence.score === "number" ? Math.round(evidence.score * 100) : null;
+  const confidence = typeof evidence.confidence === "number" ? Math.round(evidence.confidence * 100) : null;
+  return <article className="evidence-card"><div className="evidence-card__pin" aria-hidden="true" /><div className="evidence-card__top"><span>{evidence.agent}</span>{evidence.method && <strong>{evidence.method}</strong>}</div>{evidence.summary && <p>{evidence.summary}</p>}<div className="evidence-card__scores">{score !== null && <span>Score {score}%</span>}{confidence !== null && <span>Confidence {confidence}%</span>}</div><div className="evidence-card__signal" aria-hidden="true"><span style={{ height: `${Math.max(score ?? 22, 10)}%` }} /><span style={{ height: `${Math.max(confidence ?? 34, 10)}%` }} /><span style={{ height: `${Math.max(((score ?? 35) + (confidence ?? 35)) / 2, 10)}%` }} /></div>{evidence.artifact_path && <a className="evidence-card__artifact" href={evidence.artifact_path}>Artifact path</a>}{renderMetadata(evidence.metadata)}</article>;
 }
 
 function ArtifactCard({ artifact }: { artifact: ProcessingArtifact }) {
@@ -25,7 +27,7 @@ export function EvidenceFindings({ summary }: { summary: UploadSummary }) {
   return (
     <section className="evidence-findings scroll-reveal" aria-labelledby="evidence-findings-title">
       <div className="evidence-findings__heading"><div><p className="eyebrow">Evidence & findings</p><h2 id="evidence-findings-title">What the investigation has returned.</h2></div><span>{evidence.length} evidence item{evidence.length === 1 ? "" : "s"}</span></div>
-      {evidence.length > 0 ? <div className="evidence-findings__grid">{evidence.map((item, index) => <EvidenceCard key={`${item.resultId}-${item.method ?? "evidence"}-${index}`} evidence={item} />)}</div> : <div className="dashboard-empty dashboard-empty--illustrated"><StateIllustration kind="evidence" /><p>No evidence has been returned by the available analysis results yet.</p></div>}
+      {evidence.length > 0 ? <div className="evidence-findings__grid evidence-wall">{evidence.map((item, index) => <EvidenceCard key={`${item.resultId}-${item.method ?? "evidence"}-${index}`} evidence={item} />)}</div> : <div className="dashboard-empty dashboard-empty--illustrated"><StateIllustration kind="evidence" /><p>No evidence has been returned by the available analysis results yet.</p></div>}
       {summary.artifacts.length > 0 && <div className="artifact-area"><p className="artifact-area__label">Processing artifacts</p><div>{summary.artifacts.map((artifact) => <ArtifactCard key={artifact.id} artifact={artifact} />)}</div></div>}
     </section>
   );

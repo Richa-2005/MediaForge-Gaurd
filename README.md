@@ -252,9 +252,9 @@ npm install
 npm run dev
 ```
 
-Vite proxies `/api` to `VITE_BACKEND_URL`, defaulting to
-`http://localhost:8000`. Set `VITE_API_BASE_URL` only when the browser should
-call the backend directly instead of using the dev proxy.
+Vite proxies `/api` to `VITE_API_BASE_URL`, defaulting to
+`http://localhost:8000`. Use a relative value or leave it empty when the
+browser should call same-origin `/api` routes in production.
 
 
 

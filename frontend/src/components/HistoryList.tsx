@@ -1,12 +1,8 @@
 import type { UploadRecord } from "../types/upload";
+import { formatTimestamp } from "../utils/dateTime";
 import { StatusBadge } from "./StatusBadge";
 
 type HistoryListProps = { uploads: UploadRecord[]; selectedId: number | null; onSelect: (id: number) => void };
-
-function formatTimestamp(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Timestamp unavailable" : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
 
 export function HistoryList({ uploads, selectedId, onSelect }: HistoryListProps) {
   if (uploads.length === 0) return <p className="history-empty">No returned submissions match the current filters.</p>;

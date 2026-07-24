@@ -1,10 +1,6 @@
 import type { UploadSummary } from "../types/dashboard";
+import { formatTimestamp } from "../utils/dateTime";
 import { StatusBadge } from "./StatusBadge";
-
-function formatTimestamp(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Timestamp unavailable" : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
 
 export function ResultsHeader({ summary }: { summary: UploadSummary }) {
   return (

@@ -87,7 +87,7 @@ export function InvestigationDashboardPage() {
               <InvestigationPipeline summary={summary} />
               <EvidenceFindings summary={summary} />
               <AnalysisBreakdown summary={summary} />
-              <ReportPreview summary={summary} />
+              <ReportPreview summary={summary} compact />
             </div>
           </section>
         )}

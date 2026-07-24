@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { getRecentUploads } from "../services/uploadService";
 import type { UploadRecord } from "../types/upload";
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
+import { formatDate } from "../utils/dateTime";
 
 export function RecentUploads() {
   const [uploads, setUploads] = useState<UploadRecord[] | null>(null);
