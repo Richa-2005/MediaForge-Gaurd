@@ -42,7 +42,7 @@ export const technologyGroups = [
   { title: "Media forensics", items: ["Pillow", "python-magic", "Librosa", "MoviePy", "OpenAI Whisper"] },
   { title: "Text verification", items: ["LangDetect", "NLTK", "Wikipedia"] },
   { title: "Reporting", items: ["LangGraph", "LangChain Core", "Ollama", "Groq"] },
-  { title: "Infrastructure", items: ["Celery", "Redis", "SQLite"] },
+  { title: "Infrastructure", items: ["Celery", "Redis", "SQLite","PostgresSQL"] },
 ] as const;
 
 export const teamMembers: TeamMember[] = [
