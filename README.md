@@ -256,6 +256,35 @@ Vite proxies `/api` to `VITE_API_BASE_URL`, defaulting to
 `http://localhost:8000`. Use a relative value or leave it empty when the
 browser should call same-origin `/api` routes in production.
 
+## Docker Deployment
+
+The production-style Docker setup uses:
+
+- `frontend`: static Vite build served by Nginx
+- `api`: FastAPI backend
+- `worker`: Celery worker using the same backend image
+- `db`: PostgreSQL
+- `redis`: Celery broker and result backend
+
+Create the Docker environment file:
+
+```bash
+cp backend/docker.env.example backend/.env.docker
+```
+
+Before production deployment, replace `JWT_SECRET_KEY` and the Postgres
+password values. Postgres is recommended for deployment; SQLite should only
+be used for local development or quick demos.
+
+Start the stack:
+
+```bash
+docker compose up --build
+```
+
+Open the app at `http://localhost:5173`. The frontend proxies `/api` to the
+backend container, so the production build can use same-origin API requests.
+
 
 
 

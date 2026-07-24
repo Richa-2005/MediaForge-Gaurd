@@ -9,6 +9,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def elapsed_ms(started_at: datetime | None, completed_at: datetime) -> int:
+    if started_at is None:
+        return 0
+
+    if started_at.tzinfo is None:
+        started_at = started_at.replace(tzinfo=timezone.utc)
+    if completed_at.tzinfo is None:
+        completed_at = completed_at.replace(tzinfo=timezone.utc)
+
+    return int((completed_at - started_at).total_seconds() * 1000)
+
+
 def generate_upload_report(*, upload_id: int, primary_analysis_id: int, db):
     """Load the LLM stack only inside the task that needs it."""
     from app.services.llm.report_service import (
@@ -50,7 +66,7 @@ def start_step(
         raise ValueError("The process has not been stored as a step yet.")
     try:
         step.status = StepStatus.RUNNING
-        step.started_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        step.started_at = utc_now()
         db.commit()
         db.refresh(step)
     except Exception as e:
@@ -65,10 +81,8 @@ def complete_step(
         raise ValueError("The process has not been stored as a step yet.")
     try:
         step.status = StepStatus.COMPLETED
-        step.completed_at =datetime.now(timezone.utc).replace(tzinfo=None)
-        step.duration_ms =  int(
-            (step.completed_at - step.started_at).total_seconds() * 1000
-        )
+        step.completed_at = utc_now()
+        step.duration_ms = elapsed_ms(step.started_at, step.completed_at)
         
         db.commit()
         db.refresh(step)
@@ -86,13 +100,8 @@ def fail_step(
         raise ValueError("The process has not been stored as a step yet.")
     try:
         step.status = StepStatus.FAILED
-        step.completed_at = datetime.now(timezone.utc).replace(tzinfo=None).replace(tzinfo=None)
-        if step.started_at is not None:
-            step.duration_ms =  int(
-                (step.completed_at - step.started_at).total_seconds() * 1000
-            )
-        else:
-            step.duration_ms  = 0
+        step.completed_at = utc_now()
+        step.duration_ms = elapsed_ms(step.started_at, step.completed_at)
         step.error_message = error
         db.commit()
         db.refresh(step)
@@ -125,16 +134,14 @@ def complete_processing(
         raise ValueError(
             f"No analysis results were produced "
             f"for upload {upload.id}."
-        )
+    )
     running.status = RunStatus.COMPLETED
-    running.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    running.completed_at = utc_now()
     if running.started_at is None:
         raise ValueError(
             f"Processing run {running.id} has no started_at timestamp."
         )
-    running.duration_ms = int(
-        (running.completed_at - running.started_at).total_seconds() * 1000
-    )
+    running.duration_ms = elapsed_ms(running.started_at, running.completed_at)
 
     upload.status = UploadStatus.COMPLETED
 
@@ -195,14 +202,11 @@ def fail_processing(
 
     if running is not None:
         running.status = RunStatus.FAILED
-        running.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        running.completed_at = utc_now()
         if running.started_at is None:
             raise ValueError(
                 f"Processing run {running.id} has no started_at timestamp."
             )
-        running.duration_ms = int(
-            (running.completed_at - running.started_at).total_seconds()
-            * 1000
-        )
+        running.duration_ms = elapsed_ms(running.started_at, running.completed_at)
 
     db.commit()
