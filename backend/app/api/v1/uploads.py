@@ -2,12 +2,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import bearer_scheme, get_current_user
 from app.models.user import User
 from app.services.upload_service import create_upload, get_upload_status
+from app.services.storage_service import download_from_supabase_storage
 from app.services.auth_service import decode_access_token
 from app.services.analysis_service import get_upload_results
 from app.services.url_ingestion_service import (
@@ -118,9 +119,17 @@ def uploaded_media_file(
 
     file_path = Path(upload.file_path)
     if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Uploaded media file is not available.",
+        content, content_type = download_from_supabase_storage(
+            upload.stored_filename
+        )
+        return Response(
+            content=content,
+            media_type=content_type or upload.mime_type,
+            headers={
+                "Content-Disposition": (
+                    f'inline; filename="{upload.original_filename}"'
+                )
+            },
         )
 
     return FileResponse(

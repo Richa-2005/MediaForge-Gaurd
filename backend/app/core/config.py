@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
     PROCESSING_DIR: Path = BACKEND_ROOT / "storage" / "processing"
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: SecretStr = SecretStr("")
+    SUPABASE_STORAGE_BUCKET: str = ""
 
     LLM_PROVIDER: str = "OLLAMA"
     GROQ_API_KEY: SecretStr = SecretStr("")

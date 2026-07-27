@@ -14,6 +14,10 @@ from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
 from app.models.user import User
 from app.core.celery_app import celery_app
+from app.services.storage_service import (
+    build_storage_key,
+    upload_to_supabase_storage,
+)
 
 
 MIME_EXTENSIONS = {
@@ -74,7 +78,7 @@ async def validating_file(uploadedFile : UploadFile) -> str:
     
     return detected_mime
     
-async def store_file(uploadedFile : UploadFile):
+async def store_file(uploadedFile : UploadFile, detected_mime: str):
     media_id = str(uuid4())
     folder_path = Path(settings.UPLOAD_DIR) / media_id
     folder_path.mkdir(parents=True, exist_ok=True)
@@ -83,15 +87,17 @@ async def store_file(uploadedFile : UploadFile):
 
     stored_filename = f"{media_id}{extension}"
     file_path = folder_path / stored_filename
+    object_key = build_storage_key(media_id, uploadedFile.filename)
 
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(uploadedFile.file, buffer)
+        await upload_to_supabase_storage(uploadedFile, object_key, detected_mime)
     except OSError:
         shutil.rmtree(folder_path, ignore_errors=True)
         raise
 
-    return file_path
+    return file_path, object_key
     
 
 async def calculate_hash(uploadedFile : UploadFile) -> str:
@@ -108,13 +114,14 @@ def upload_media(
         db: Session,uploadedFile : UploadFile, 
         detected_mime : str,sha_hash : str,
         file_path : str,
+        stored_filename: str,
         user: User | None = None,
     ):
     
     upload = Upload(
         user_id=user.id if user else None,
         original_filename=uploadedFile.filename,
-        stored_filename=str(file_path).split('/')[-1],
+        stored_filename=stored_filename,
         file_path=str(file_path),
         media_type=detected_mime.split('/', 1)[0],
         mime_type=detected_mime,
@@ -157,13 +164,14 @@ async def create_upload(
 
         file_path: Path | None = None
         try:
-            file_path = await store_file(uploadedFile)
+            file_path, storage_key = await store_file(uploadedFile, detected_mime)
             uploaded_file = upload_media(
                 db,
                 uploadedFile,
                 detected_mime,
                 sha_hash,
                 file_path,
+                storage_key,
                 user,
             )
 
