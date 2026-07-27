@@ -1,6 +1,10 @@
 from pathlib import Path
 
 from app.core.config import settings
+from app.services.storage_service import (
+    download_from_supabase_storage,
+    supabase_storage_enabled,
+)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -13,13 +17,41 @@ def get_output_dir(upload, artifact_folder):
         / upload.sha256_hash
     )
 
+
+def ensure_upload_file_available(upload) -> Path:
+    local_path = Path(upload.file_path)
+    if local_path.exists() and local_path.is_file():
+        return local_path
+
+    if not supabase_storage_enabled():
+        raise FileNotFoundError(
+            f"Uploaded media file not found locally: {local_path}"
+        )
+
+    object_key = upload.stored_filename
+    content, _content_type = download_from_supabase_storage(object_key)
+
+    fallback_dir = settings.UPLOAD_DIR / "worker-cache" / str(upload.id)
+    fallback_dir.mkdir(parents=True, exist_ok=True)
+    fallback_path = fallback_dir / Path(object_key).name
+    fallback_path.write_bytes(content)
+
+    logger.info(
+        "Downloaded upload from Supabase Storage | upload_id=%s object_key=%s path=%s",
+        upload.id,
+        object_key,
+        fallback_path,
+    )
+    return fallback_path
+
+
 def process_video_adapter(upload):
     from ai_workers.src.processors.video_processor import (
         extract_frames,
         get_video_metadata,
     )
 
-    video_path = Path(upload.file_path)
+    video_path = ensure_upload_file_available(upload)
 
     output_dir = get_output_dir(upload,"frames")
 
@@ -57,7 +89,7 @@ def process_image_adapter(upload):
     from ai_workers.src.processors.image_processor import process_image
 
     output_dir = get_output_dir(upload, "image")
-    image_path = Path(upload.file_path)
+    image_path = ensure_upload_file_available(upload)
     result = process_image(image_path, output_dir)
     metadata = result["metadata"]
 
@@ -82,12 +114,7 @@ def process_image_adapter(upload):
     return [artifacts]
 
 def process_audio_adapter(upload):
-    audio_path = Path(upload.file_path)
-
-    if not audio_path.exists():
-        raise FileNotFoundError(
-            f"Uploaded audio file not found: {audio_path}"
-        )
+    audio_path = ensure_upload_file_available(upload)
 
     logger.info(
         "Audio prepared | upload_id=%s path=%s",
@@ -105,7 +132,7 @@ def process_audio_adapter(upload):
     ]
 
 def process_text_adapter(upload):
-    text_path = Path(upload.file_path)
+    text_path = ensure_upload_file_available(upload)
     try:
         text = text_path.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
