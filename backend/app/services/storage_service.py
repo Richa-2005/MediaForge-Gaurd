@@ -65,7 +65,10 @@ async def upload_to_supabase_storage(
     if response.status_code >= 400:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="The media could not be stored in Supabase Storage.",
+            detail=(
+                "The media could not be stored in Supabase Storage. "
+                f"Supabase returned {response.status_code}."
+            ),
         )
 
 

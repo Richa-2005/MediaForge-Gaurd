@@ -5,6 +5,7 @@ import magic
 import os
 import shutil
 import hashlib
+import logging
 from pathlib import Path
 from uuid import uuid4
 from sqlalchemy.orm import Session
@@ -18,6 +19,8 @@ from app.services.storage_service import (
     build_storage_key,
     upload_to_supabase_storage,
 )
+
+logger = logging.getLogger(__name__)
 
 
 MIME_EXTENSIONS = {
@@ -92,10 +95,18 @@ async def store_file(uploadedFile : UploadFile, detected_mime: str):
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(uploadedFile.file, buffer)
-        await upload_to_supabase_storage(uploadedFile, object_key, detected_mime)
     except OSError:
         shutil.rmtree(folder_path, ignore_errors=True)
         raise
+
+    try:
+        await upload_to_supabase_storage(uploadedFile, object_key, detected_mime)
+    except HTTPException as exc:
+        logger.warning(
+            "Supabase upload skipped after failure | object_key=%s detail=%s",
+            object_key,
+            exc.detail,
+        )
 
     return file_path, object_key
     
