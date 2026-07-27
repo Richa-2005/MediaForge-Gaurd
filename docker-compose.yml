@@ -20,8 +20,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: backend/Dockerfile
-    command: celery -A app.core.celery_app.celery_app worker --loglevel=info --concurrency=1
+      dockerfile: backend/Worker.Dockerfile
     env_file:
       - backend/.env.docker
     depends_on:

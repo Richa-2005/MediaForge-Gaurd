@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
 from app.models.user import User
-from app.tasks.upload_tasks import process_upload
+from app.core.celery_app import celery_app
 
 
 MIME_EXTENSIONS = {
@@ -207,7 +207,10 @@ async def create_upload(
             ) from exc
 
         try:
-            process_upload.delay(uploaded_file.id, processing_run.id)
+            celery_app.send_task(
+                "process_upload",
+                args=[uploaded_file.id, processing_run.id],
+            )
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
