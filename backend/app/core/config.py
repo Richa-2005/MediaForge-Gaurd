@@ -29,6 +29,7 @@ class Settings(BaseSettings):
         "audio/x-wav",
         "text/plain"
     }
+    DISABLED_MEDIA_TYPES: set[str] = set()
 
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"

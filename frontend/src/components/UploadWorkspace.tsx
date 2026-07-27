@@ -10,8 +10,29 @@ import { UploadPipelinePreview } from "./UploadPipelinePreview";
 
 type IntakeState = "idle" | "uploading" | "accepted" | "invalid" | "started" | "error";
 
-const supportedExtensions = ["jpg", "jpeg", "png", "webp", "mp4", "mp3", "wav", "txt"];
-const maxBytes = 50 * 1024 * 1024;
+const baseSupportedExtensions = ["jpg", "jpeg", "png", "webp", "mp4", "mp3", "wav", "txt"];
+const mediaExtensionGroups = {
+  video: ["mp4"],
+  audio: ["mp3", "wav"],
+  image: ["jpg", "jpeg", "png", "webp"],
+  text: ["txt"],
+};
+const disabledExtensions = new Set(
+  String(import.meta.env.VITE_DISABLED_EXTENSIONS ?? "")
+    .split(",")
+    .map((extension) => extension.trim().toLowerCase().replace(/^\./, ""))
+    .filter((extension: string) => Boolean(extension)),
+);
+const supportedExtensions = baseSupportedExtensions.filter((extension) => !disabledExtensions.has(extension));
+const acceptExtensions = supportedExtensions.map((extension) => `.${extension}`).join(",");
+const maxSizeMb = Number(import.meta.env.VITE_MAX_UPLOAD_SIZE_MB ?? 50);
+const maxBytes = Number.isFinite(maxSizeMb) && maxSizeMb > 0 ? maxSizeMb * 1024 * 1024 : 50 * 1024 * 1024;
+const supportedDescription = [
+  supportedExtensions.some((extension) => mediaExtensionGroups.image.includes(extension)) ? "images" : null,
+  supportedExtensions.some((extension) => mediaExtensionGroups.video.includes(extension)) ? "videos" : null,
+  supportedExtensions.some((extension) => mediaExtensionGroups.audio.includes(extension)) ? "audio files" : null,
+  supportedExtensions.some((extension) => mediaExtensionGroups.text.includes(extension)) ? "plain-text documents" : null,
+].filter(Boolean).join(", ");
 
 function formatBytes(size: number) {
   return `${(size / 1024 / 1024).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} MiB`;
@@ -19,8 +40,8 @@ function formatBytes(size: number) {
 
 function validateFile(file: File) {
   const extension = file.name.split(".").pop()?.toLowerCase();
-  if (!extension || !supportedExtensions.includes(extension)) return "This file type is not supported. Choose an image, video, audio file, or plain-text document.";
-  if (file.size > maxBytes) return "This file exceeds the 50 MiB submission limit.";
+  if (!extension || !supportedExtensions.includes(extension)) return `This file type is not supported in this deployment. Choose ${supportedDescription || "a supported file"}.`;
+  if (file.size > maxBytes) return `This file exceeds the ${formatBytes(maxBytes)} submission limit.`;
   return null;
 }
 
@@ -151,7 +172,7 @@ export function UploadWorkspace() {
           onDragLeave={(event) => { event.preventDefault(); setDragging(false); }}
           onDrop={handleDrop}
         >
-          <input ref={fileInput} id="media-file" className="visually-hidden" type="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.mp3,.wav,.txt" onChange={handleFileChange} />
+          <input ref={fileInput} id="media-file" className="visually-hidden" type="file" accept={acceptExtensions} onChange={handleFileChange} />
           <MediaPassportIllustration mode={passportMode} />
           {!selectedFile && intakeState !== "uploading" && intakeState !== "started" && (
             <div className="dropzone__idle">

@@ -44,6 +44,16 @@ def validate_media_mime(detected_mime: str) -> None:
             ),
         )
 
+    media_type = detected_mime.split("/", 1)[0]
+    if media_type in settings.DISABLED_MEDIA_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=(
+                f"{media_type.title()} submissions are disabled in this deployment. "
+                "Choose another supported media type."
+            ),
+        )
+
 
 async def validating_file(uploadedFile : UploadFile) -> str:
     #Validating the file
