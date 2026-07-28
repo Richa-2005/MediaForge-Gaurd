@@ -10,10 +10,6 @@ from app.models.processing_artifacts import ProcessingArtifact
 from app.models.analysis_result import AgentName
 from app.models.upload import Upload
 
-from ai_workers.src.agents.analysis_agent import AnalysisAgent
-from ai_workers.src.schemas.agent_result import AgentResult
-from ai_workers.src.schemas.analysis_result import AnalysisResult as AIAnalysisResult
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -108,14 +104,14 @@ def get_analysis_result(
 def build_analysis_payload(
     upload_id: int,
     agent_name: AgentName,
-    result: AgentResult,
+    result,
 ) -> dict:
     """
     Convert an AI-worker AgentResult into the backend
     AnalysisResultCreate-compatible dictionary.
     """
 
-    result_analysis: AIAnalysisResult = result.analysis
+    result_analysis = result.analysis
 
     return {
         "upload_id": upload_id,
@@ -165,6 +161,8 @@ def run_analysis(
     upload,
     db: Session,
 ) -> list[AnalysisResult]:
+    from ai_workers.src.agents.analysis_agent import AnalysisAgent
+
     artifacts = db.scalars(
         select(ProcessingArtifact).where(
             ProcessingArtifact.upload_id == upload.id
@@ -270,7 +268,7 @@ def run_analysis(
 def run_video_analysis(
     upload,
     artifacts: list[ProcessingArtifact],
-    analysis_agent: AnalysisAgent,
+    analysis_agent,
 ) -> list[dict]:
 
         frame_artifacts = [
@@ -283,7 +281,7 @@ def run_video_analysis(
             raise ValueError(
                 f"No frame artifacts found for upload {upload.id}."
             )
-        frame_results: list[tuple[ProcessingArtifact, AgentResult]] = []
+        frame_results = []
         for frame_artifact in frame_artifacts:
             frame_path = Path(frame_artifact.file_path)
             if not frame_path.exists():
@@ -298,7 +296,7 @@ def run_video_analysis(
                 media_path=frame_path,
                 media_type="image",
             )
-            frame_result: AgentResult | None = result_output.get("vision")
+            frame_result = result_output.get("vision")
             if frame_result is not None:
                 frame_results.append(
                     (frame_artifact, frame_result)
@@ -313,9 +311,7 @@ def run_video_analysis(
             frame_results,
             key=lambda item: item[1].analysis.risk_score,
         )
-        result_analysis: AIAnalysisResult = (
-            highest_risk_result.analysis
-        )
+        result_analysis = highest_risk_result.analysis
         per_frame_results = []
         for frame_artifact, frame_result in frame_results:
             frame_analysis = frame_result.analysis
@@ -364,7 +360,7 @@ def run_video_analysis(
 def dispatch_single_agent(
     upload,
     artifacts: list[ProcessingArtifact],
-    analysis_agent: AnalysisAgent,
+    analysis_agent,
     *,
     artifact_type: str,
     result_key: str,
@@ -384,7 +380,7 @@ def dispatch_single_agent(
         media_type=upload.media_type,
     )
 
-    result: AgentResult | None = result_output.get(
+    result = result_output.get(
         result_key
     )
 
@@ -405,7 +401,7 @@ def dispatch_single_agent(
 def dispatch_text_agents(
     upload,
     artifacts: list[ProcessingArtifact],
-    analysis_agent: AnalysisAgent,
+    analysis_agent,
 ) -> list[dict]:
     processed_artifact = get_processed_artifact(
         upload_id=upload.id,
@@ -439,7 +435,7 @@ def dispatch_text_agents(
     payloads: list[dict] = []
 
     for result_key, agent_name in result_mappings:
-        result: AgentResult | None = result_output.get(
+        result = result_output.get(
             result_key
         )
 

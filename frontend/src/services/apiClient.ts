@@ -1,6 +1,6 @@
 import { clearStoredToken, getStoredToken } from "./tokenStore";
 
-const apiBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "";
+export const apiBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "";
 
 type ApiRequestOptions = RequestInit & {
   auth?: boolean;

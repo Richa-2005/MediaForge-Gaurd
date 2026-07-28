@@ -1,4 +1,5 @@
 import { getStoredToken } from "../services/tokenStore";
+import { apiBase } from "../services/apiClient";
 import type { AnalysisAgent, UploadSummary } from "../types/dashboard";
 import { getPrimaryResult } from "../utils/investigation";
 import { StatusBadge } from "./StatusBadge";
@@ -26,7 +27,7 @@ function MediaPreview({ summary }: { summary: UploadSummary }) {
           : "media";
 
   const token = getStoredToken();
-  const mediaUrl = `/api/v1/uploads/${summary.upload.id}/media${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  const mediaUrl = `${apiBase}/api/v1/uploads/${summary.upload.id}/media${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 
   return (
     <div className={`case-file-preview case-file-preview--${mode}`}>
