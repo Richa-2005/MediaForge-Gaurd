@@ -72,7 +72,7 @@ and explainable reporting into a unified media verification workflow.
 <table>
 <tr>
 
-<td width="50%" valign="top">
+<td width="50%">
 
 <h3>🔍 Multimodal Media Analysis</h3>
 
@@ -94,7 +94,7 @@ Each module contributes independent evidence toward the final verification resul
 </td>
 
 
-<td width="50%" valign="top">
+<td width="50%">
 
 <h3>🧠 AI Detection Pipeline</h3>
 
@@ -118,7 +118,7 @@ A modular AI pipeline where specialized components collaborate instead of relyin
 
 <tr>
 
-<td width="50%" valign="top">
+<td width="50%">
 
 <h3>📄 Explainable Verification Reports</h3>
 
@@ -138,7 +138,7 @@ Transform raw AI predictions into structured forensic insights.
 </td>
 
 
-<td width="50%" valign="top">
+<td width="50%">
 
 <h3>⚙️ Modular Architecture</h3>
 
@@ -162,7 +162,7 @@ Designed for continuous improvement and scalability.
 
 <tr>
 
-<td width="50%" valign="top">
+<td width="50%">
 
 <h3>📊 Evidence-Based Analysis</h3>
 
@@ -185,7 +185,7 @@ MediaForge-Guard investigates:
 </td>
 
 
-<td width="50%" valign="top">
+<td width="50%">
 
 <h3>🔐 Secure Processing Workflow</h3>
 
@@ -205,46 +205,102 @@ A controlled backend workflow managing:
 
 </table>
 
+---
 
+## Deployment Architecture
 
+### Current Production Setup (Vercel + Railway)
 
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Frontend (Vercel)                                           │
+│ https://mediaforge-guard.vercel.app                         │
+│ • Next.js / Vite SPA                                        │
+│ • Static hosting + CDN                                      │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ├─────────────────────────────────────────┐
+                   │                                         │
+        ┌──────────▼─────────────┐            ┌──────────────▼──────┐
+        │ Railway API Services   │            │ Railway Databases   │
+        │                        │            │                     │
+        │ • api-slim (8080)      │────────────┤ • PostgreSQL        │
+        │   FastAPI + Uvicorn   │    TCP     │ • Redis (Broker)    │
+        │                        │            │                     │
+        │ • worker               │────────────┤ • Supabase Storage  │
+        │   Celery Worker        │            │   (S3-compatible)   │
+        │   async processing    │            │                     │
+        └────────────────────────┘            └─────────────────────┘
+```
 
-<p align="center">
+### Services Configuration
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**api-slim** (FastAPI Backend)
+- Deployment: `https://api-slim-production.up.railway.app`
+- Port: 8080
+- Healthcheck: `/health`
+- Docstring: `/docs` (Swagger UI)
+- Handles: file uploads, user auth, report generation
 
-</p>
+**worker** (Celery Task Worker)
+- Runs on Railway
+- Processes analysis tasks asynchronously
+- Connects to Redis broker and PostgreSQL
 
+**Postgres** (Railway)
+- Analysis results and metadata
+- User sessions and API keys
+- Volume: 500 MB persistent storage
 
-## Backend
+**Redis** (Railway)
+- Celery task broker
+- Result backend caching
+- Volume: 500 MB persistent storage
 
-Create a virtual environment and install dependencies:
+**Supabase Storage**
+- Media uploads and processed files
+- S3-compatible bucket access
+
+---
+
+## Deployment Instructions
+
+### Local Development
+
+#### Backend Setup
+
+Create a virtual environment:
 
 ```bash
 python3 -m venv backend/.venv
-backend/.venv/bin/pip install -r requirements.txt
+backend/.venv/bin/pip install -r backend/requirements.txt
 ```
 
-Copy `backend/.env.example` to `backend/.env` and set a unique
-`JWT_SECRET_KEY`. Keep `ENVIRONMENT=development` locally. In production,
-the app refuses to start if `JWT_SECRET_KEY` is still the placeholder.
+Copy and configure environment file:
 
-Run the API from the backend directory:
+```bash
+cp backend/.env.example backend/.env
+```
+
+In `backend/.env`:
+- Set `JWT_SECRET_KEY` to a unique 32-character string
+- Set `ENVIRONMENT=development`
+- Point `DATABASE_URL` to local or Railway Postgres
+- Point `REDIS_URL` to local or Railway Redis
+
+Run the API:
 
 ```bash
 cd backend
-../backend/.venv/bin/uvicorn app.main:app --reload
+../backend/.venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-Run backend tests:
+Access API: `http://localhost:8000`  
+API docs: `http://localhost:8000/docs`
 
-```bash
-backend/.venv/bin/pytest
-```
+#### Frontend Setup
 
-## Frontend
-
-Install dependencies and run Vite:
+Install and run Vite:
 
 ```bash
 cd frontend
@@ -252,29 +308,40 @@ npm install
 npm run dev
 ```
 
-Vite proxies `/api` to `VITE_API_BASE_URL`, defaulting to
-`http://localhost:8000`. Use a relative value or leave it empty when the
-browser should call same-origin `/api` routes in production.
+Access frontend: `http://localhost:5173`  
+Vite proxies `/api` to `VITE_API_BASE_URL` (defaults to `http://localhost:8000`)
+
+#### Run Backend Tests
+
+```bash
+cd backend
+../backend/.venv/bin/pytest
+```
+
+---
 
 ## Docker Deployment
 
-The production-style Docker setup uses:
+The production Docker setup includes:
 
-- `frontend`: static Vite build served by Nginx
-- `api`: FastAPI backend
-- `worker`: Celery worker using the same backend image
-- `db`: PostgreSQL
-- `redis`: Celery broker and result backend
+- **frontend**: Static Vite build served by Nginx (port 5173)
+- **api-slim**: FastAPI backend (port 8000)
+- **worker**: Celery worker (async task processing)
+- **postgres**: PostgreSQL database
+- **redis**: Redis for Celery broker
 
-Create the Docker environment file:
+### Local Docker Compose
+
+Copy the Docker environment file:
 
 ```bash
 cp backend/docker.env.example backend/.env.docker
 ```
 
-Before production deployment, replace `JWT_SECRET_KEY` and the Postgres
-password values. Postgres is recommended for deployment; SQLite should only
-be used for local development or quick demos.
+Update `backend/.env.docker` with production secrets:
+- Unique `JWT_SECRET_KEY`
+- Strong PostgreSQL password
+- Supabase credentials
 
 Start the stack:
 
@@ -282,61 +349,151 @@ Start the stack:
 docker compose up --build
 ```
 
-Open the app at `http://localhost:5173`. The frontend proxies `/api` to the
-backend container, so the production build can use same-origin API requests.
+App will be available at: `http://localhost:5173`
 
+---
 
+## Environment Variables
 
+### Backend Configuration
 
+```env
+# Core settings
+ENVIRONMENT=production  # development or production
+JWT_SECRET_KEY=<unique_32_char_secret>
 
+# Database & Cache
+DATABASE_URL=postgresql://user:pass@postgres.railway.internal:5432/mediaforge
+REDIS_URL=redis://default:pass@redis.railway.internal:6379/0
 
+# Celery
+CELERY_BROKER_URL=<same_as_REDIS_URL>
+CELERY_RESULT_BACKEND=<same_as_REDIS_URL>
 
+# LLM Provider (for analysis)
+LLM_PROVIDER=groq
+GROQ_API_KEY=<your_groq_api_key>
+GROQ_MODEL=mixtral-8x7b-32768
 
+# Frontend CORS
+CORS_ORIGINS=https://mediaforge-guard.vercel.app,http://localhost:5173
 
+# Media constraints
+MAX_UPLOAD_SIZE_BYTES=104857600  # 100MB
+DISABLED_MEDIA_TYPES=video/mp4,audio/mpeg  # Disabled in hosted demo
 
+# Supabase Storage
+SUPABASE_URL=<your_supabase_project_url>
+SUPABASE_STORAGE_BUCKET=mediaforge-uploads
+SUPABASE_SERVICE_ROLE_KEY=<your_service_role_key>
+```
 
+### Restrictions in Hosted Demo
 
+- **Video uploads**: Disabled (CPU-heavy, requires Modal/RunPod)
+- **Audio uploads**: Disabled (requires dedicated processing)
+- **Max file size**: 100 MB
+- **Supported formats**: JPEG, PNG, GIF (images only)
 
+Future heavy processing can be offloaded to **Modal** or **RunPod** for scaling.
 
+---
 
-
-
-
-
-
-
-
-<h2 align="center">📂 Repository Structure</h2>
+## Repository Structure
 
 ```text
-MediaForge-Guard
+MediaForge-Guard/
+├── backend/
+│   ├── app/
+│   │   ├── main.py          # FastAPI entry point
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── routes/          # API endpoints
+│   │   ├── core/            # Config, security, Celery
+│   │   └── analysis/        # AI verification pipeline
+│   ├── Dockerfile           # Slim API image
+│   ├── Worker.Dockerfile    # Celery worker image
+│   ├── Combined.Dockerfile  # Legacy combined image (deprecated)
+│   ├── requirements.txt      # Python dependencies
+│   └── tests/               # Pytest suite
 │
-├── backend
-│   ├── api
-│   ├── ai_workers
-│   ├── models
-│   ├── pipelines
-│   └── tests
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx          # Main React component
+│   │   ├── pages/           # Page components
+│   │   ├── components/      # Reusable UI components
+│   │   └── api/             # API client hooks
+│   ├── public/              # Static assets
+│   ├── package.json         # Node dependencies
+│   └── vite.config.ts       # Vite bundler config
 │
-├── frontend
-│   ├── app
-│   ├── components
-│   ├── public
-│   └── styles
-│
-├── assets
-│   ├── hero.svg
-│   └── screenshots
-│
-└── README.md
+├── docker-compose.yml       # Local multi-container setup
+├── .env.example             # Environment template
+└── README.md                # This file
 ```
 
 ---
 
+## Troubleshooting
+
+### API won't start
+
+**Symptom:** Deployment fails with "JWT_SECRET_KEY is still the placeholder"
+
+**Fix:** Update `JWT_SECRET_KEY` to a unique 32-character string and redeploy.
+
+### Worker tasks not processing
+
+**Symptom:** Analysis jobs queue but never execute
+
+**Action needed:** 
+1. Check worker is online: `https://railway.com/project/[id]`
+2. Verify Redis URL matches between `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND`
+3. Check worker logs for connection errors
+
+### Upload fails with 413 Payload Too Large
+
+**Symptom:** Files over 100 MB are rejected
+
+**Fix:** Increase `MAX_UPLOAD_SIZE_BYTES` in environment (requires API redeploy)
+
+### Frontend can't reach API
+
+**Symptom:** CORS errors or 404 on `/api` routes
+
+**Fix:** 
+- In development: Vite proxy handles this automatically
+- In production: Frontend must call same-origin `/api`, or update `CORS_ORIGINS` env var
+
+---
+
+## Future Enhancements
+
+### Phase 1: Database & Cache Migration (Optional)
+- **Upstash Redis**: Replace Railway Redis (better free tier)
+- **Supabase Postgres**: Replace Railway Postgres (unified data stack)
+
+### Phase 2: Heavy Processing Offload
+- **Modal.com** or **RunPod**: Video/audio analysis
+- **LangChain** or **LlamaIndex**: Advanced LLM pipelines
+- Async job queue for batch analysis
+
+### Phase 3: Advanced Features
+- Multi-format media support (restore video/audio)
+- Real-time forensic visualization
+- Collaborative report generation
+- Custom domain & branding
+
+---
 
 <p align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Inter&size=18&duration=4000&pause=1500&color=C7A86A&center=true&vCenter=true&width=700&lines=Building+Trust+in+Digital+Media.;Multi-Agent+AI+for+Content+Verification.;MediaForge-Guard."/>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</p>
+
+<p align="center">
+
+<img src="https://readme-typing-svg.demolab.com?font=Inter&size=18&duration=4000&pause=1500&color=C7A86A&center=true&vCenter=true&width=700&lines=Building+Trust+in+Digital+Media.;Multi-Agent+AI+for+Content+Verification.;MediaForge-Guard." />
 
 </p>
 
@@ -346,9 +503,9 @@ MediaForge-Guard
 
 </p>
 
-
 <p align="center">
 
 <img src="https://readme-typing-svg.demolab.com?font=Inter&weight=500&size=18&duration=3500&pause=1500&color=C7A86A&center=true&vCenter=true&width=750&lines=Built+with+%E2%9D%A4%EF%B8%8F+for+trustworthy+digital+media.;Created+by+Rashmi+Jha+%26+Richa+Gupta." />
 
 </p>
+
