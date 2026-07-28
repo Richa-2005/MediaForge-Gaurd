@@ -20,6 +20,7 @@ COPY requirements-api.txt .
 RUN pip install --no-cache-dir -r requirements-api.txt
 
 COPY backend ./backend
+COPY ai_workers ./ai_workers
 
 WORKDIR /app/backend
 
