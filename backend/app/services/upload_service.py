@@ -231,6 +231,7 @@ async def create_upload(
                 "process_upload",
                 args=[uploaded_file.id, processing_run.id],
                 queue="celery",
+                ignore_result=True,
             )
             broker_url = urlparse(settings.CELERY_BROKER_URL)
             logger.info(
