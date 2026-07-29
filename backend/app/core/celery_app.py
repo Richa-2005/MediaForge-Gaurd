@@ -1,5 +1,6 @@
 from app.core.config import settings
 from celery import Celery
+import ssl
 import sys
 
 celery_app = Celery(
@@ -21,3 +22,13 @@ celery_app.conf.update(
     worker_pool="solo" if sys.platform == "darwin" else "prefork",
     worker_concurrency=1 if sys.platform == "darwin" else None,
 )
+
+if settings.CELERY_BROKER_URL.startswith("rediss://"):
+    celery_app.conf.broker_use_ssl = {
+        "ssl_cert_reqs": ssl.CERT_REQUIRED,
+    }
+
+if settings.CELERY_RESULT_BACKEND.startswith("rediss://"):
+    celery_app.conf.redis_backend_use_ssl = {
+        "ssl_cert_reqs": ssl.CERT_REQUIRED,
+    }
