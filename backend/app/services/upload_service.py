@@ -7,6 +7,7 @@ import shutil
 import hashlib
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
 from uuid import uuid4
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -226,11 +227,25 @@ async def create_upload(
             ) from exc
 
         try:
-            celery_app.send_task(
+            task = celery_app.send_task(
                 "process_upload",
                 args=[uploaded_file.id, processing_run.id],
+                queue="celery",
+            )
+            broker_url = urlparse(settings.CELERY_BROKER_URL)
+            logger.info(
+                "Queued Celery task | upload_id=%s run_id=%s task_id=%s broker=%s queue=celery",
+                uploaded_file.id,
+                processing_run.id,
+                task.id,
+                broker_url.hostname,
             )
         except Exception as exc:
+            logger.exception(
+                "Failed to queue Celery task | upload_id=%s run_id=%s",
+                uploaded_file.id,
+                processing_run.id,
+            )
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="The media was stored, but analysis could not be queued.",
