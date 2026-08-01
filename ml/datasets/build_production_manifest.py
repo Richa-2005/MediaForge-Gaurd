@@ -15,14 +15,14 @@ import yaml
 
 # Import adapters so they register themselves
 from .adapters import casia  # noqa: F401
-# from .adapters import coco      # noqa: F401
-# from .adapters import genimage  # noqa: F401
+from .adapters import coco      # noqa: F401
+from .adapters import genimage  # noqa: F401
 
 from .build_manifest import ManifestBuilder
 from .environment import Environment
 from .registry import create
 from .statistics import DatasetStatistics
-from .split import split_dataframe
+
 
 
 CONFIG_PATH = Path("ml/configs/datasets.yaml")
