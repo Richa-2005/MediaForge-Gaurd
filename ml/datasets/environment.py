@@ -1,96 +1,129 @@
 """
-Environment detection for MediaForge Vision.
+Dataset environment resolution for MediaForge Vision.
 
-Automatically selects the correct dataset root depending on
-whether the code is running locally or inside Kaggle.
+Supports:
+
+- Local fixtures
+- Standard Kaggle datasets
+- KaggleHub datasets
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 
 class Environment:
     """
-    Detects the current execution environment.
-
-    Supported:
-
-        - Local development
-
-        - Kaggle Notebook
+    Resolves dataset locations for the current environment.
     """
 
     @staticmethod
     def is_kaggle() -> bool:
         """
-        Return True when running inside Kaggle.
+        Detect Kaggle runtime.
         """
-
         return (
             "KAGGLE_KERNEL_RUN_TYPE" in os.environ
             or Path("/kaggle").exists()
         )
 
     @staticmethod
-    def dataset_root(dataset_cfg: dict) -> Path:
+    def dataset_root(dataset_cfg: dict[str, Any]) -> Path:
         """
-        Return the correct dataset root.
-
-        Parameters
-        ----------
-        dataset_cfg
-            One dataset section from datasets.yaml.
+        Resolve the dataset root automatically.
         """
 
-        key = (
-            "kaggle_root"
-            if Environment.is_kaggle()
-            else "fixture_root"
-        )
+        # -----------------------------
+        # Local development
+        # -----------------------------
 
-        root = dataset_cfg.get(key)
+        if not Environment.is_kaggle():
 
-        if root is None:
-            raise KeyError(
-                f"'{key}' missing from dataset configuration."
+            root = Path(dataset_cfg["fixture_root"])
+
+            if root.exists():
+                return root
+
+            raise FileNotFoundError(
+                f"Fixture dataset not found:\n{root}"
             )
 
-        return Path(root)
+        # -----------------------------
+        # Kaggle
+        # -----------------------------
 
-    @staticmethod
-    def working_directory() -> Path:
-        """
-        Return the working directory.
+        configured = Path(dataset_cfg["kaggle_root"])
 
-        Local:
-            project root
+        if configured.exists():
+            return configured
 
-        Kaggle:
-            /kaggle/working
-        """
+        dataset_name = configured.name.lower()
 
-        if Environment.is_kaggle():
-            return Path("/kaggle/working")
+        kagglehub_root = Path("/kaggle/input/datasets")
 
-        return Path.cwd()
+        if kagglehub_root.exists():
 
-    @staticmethod
-    def manifest_directory() -> Path:
-        """
-        Directory where manifests are stored.
-        """
+            candidates: list[Path] = []
 
-        directory = (
-            Environment.working_directory()
-            / "artifacts"
-            / "manifests"
+            for path in kagglehub_root.rglob("*"):
+
+                if not path.is_dir():
+                    continue
+
+                name = path.name.lower()
+
+                if dataset_name in name:
+                    candidates.append(path)
+
+            #
+            # Prefer dataset roots
+            #
+
+            for candidate in candidates:
+
+                names = {
+                    p.name.lower()
+                    for p in candidate.iterdir()
+                    if p.is_dir()
+                }
+
+                #
+                # CASIA
+                #
+
+                if {
+                    "au",
+                    "tp",
+                }.issubset(names):
+
+                    return candidate
+
+                #
+                # COCO
+                #
+
+                if {
+                    "train2017",
+                    "val2017",
+                    "annotations",
+                }.issubset(names):
+
+                    return candidate
+
+                #
+                # GenImage
+                #
+
+                if any(
+                    child.name.startswith("imagenet")
+                    for child in candidate.iterdir()
+                    if child.is_dir()
+                ):
+                    return candidate
+
+        raise FileNotFoundError(
+            f"Unable to locate dataset:\n{dataset_cfg['kaggle_root']}"
         )
-
-        directory.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        return directory
