@@ -82,28 +82,25 @@ class Environment:
             # Prefer dataset roots
             #
 
-            for candidate in candidates:
+            # -------------------------------------------------------
+# Resolve actual dataset root
+# -------------------------------------------------------
+
+        for candidate in candidates:
+
+            #
+            # COCO
+            #
+
+            coco_root = candidate / "coco2017"
+
+            if coco_root.exists():
 
                 names = {
                     p.name.lower()
-                    for p in candidate.iterdir()
+                    for p in coco_root.iterdir()
                     if p.is_dir()
                 }
-
-                #
-                # CASIA
-                #
-
-                if {
-                    "au",
-                    "tp",
-                }.issubset(names):
-
-                    return candidate
-
-                #
-                # COCO
-                #
 
                 if {
                     "train2017",
@@ -111,7 +108,44 @@ class Environment:
                     "annotations",
                 }.issubset(names):
 
-                    return candidate
+                    return coco_root
+
+            #
+            # CASIA
+            #
+
+            casia_root = candidate / "CASIA2"
+
+            if casia_root.exists():
+
+                names = {
+                    p.name.lower()
+                    for p in casia_root.iterdir()
+                    if p.is_dir()
+                }
+
+                if {
+                    "au",
+                    "tp",
+                }.issubset(names):
+
+                    return casia_root
+
+            #
+            # Tiny GenImage
+            #
+
+            names = {
+                p.name.lower()
+                for p in candidate.iterdir()
+                if p.is_dir()
+            }
+
+            if any(
+                name.startswith("imagenet")
+                for name in names
+            ):
+                return candidate
 
                 #
                 # GenImage
