@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
+import argparse
 
 # Import adapters so they register themselves
 from .adapters import casia  # noqa: F401
@@ -41,7 +42,7 @@ def load_config() -> dict:
         return yaml.safe_load(file)
 
 
-def build_manifest() -> pd.DataFrame:
+def build_manifest(dataset: str | None = None) -> pd.DataFrame:
     """
     Build the unified dataset manifest.
     """
@@ -60,6 +61,8 @@ def build_manifest() -> pd.DataFrame:
             "enabled",
             False,
         ):
+            continue
+        if dataset is not None and dataset_name != dataset:
             continue
 
         root = Environment.dataset_root(
@@ -169,27 +172,57 @@ def save_statistics(
 
 def main() -> None:
 
-    dataframe = build_manifest()
+    parser = argparse.ArgumentParser()
 
-    train, validation, test = split_dataframe(
-        dataframe
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default=None,
+        help="Dataset to build (coco, casia, genimage).",
     )
 
-    save_manifests(
-        train,
-        validation,
-        test,
+    args = parser.parse_args()
+
+    dataframe = build_manifest(
+        dataset=args.dataset
     )
 
-    save_statistics(
-        dataframe
-    )
+    if args.dataset is None:
 
-    print("\nProduction manifests created.\n")
+        train, validation, test = split_manifest(
+            dataframe
+        )
 
-    print(
-        Environment.manifest_directory()
-    )
+        save_manifests(
+            train,
+            validation,
+            test,
+        )
+
+        save_statistics(
+            dataframe
+        )
+
+    else:
+
+        output = (
+            Environment.manifest_directory()
+            / f"{args.dataset}.parquet"
+        )
+
+        output.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        dataframe.to_parquet(
+            output,
+            index=False,
+        )
+
+        print(
+            f"\nSaved {output}"
+        )
 
 
 if __name__ == "__main__":
