@@ -10,6 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterator
 
+from PIL import Image
+
 from ..base import DatasetAdapter
 from ..metadata import ImageMetadata
 from ..registry import register
@@ -21,35 +23,12 @@ from ..taxonomy import (
     Technique,
 )
 from ..utils.files import iter_images
-from ..utils.images import (
-    get_image_size,
-    get_num_channels,
-    verify_image,
-)
 
 
 @register("genimage")
 class GenImageAdapter(DatasetAdapter):
     """
     Adapter for Tiny GenImage.
-
-    Expected structure:
-
-    root/
-        imagenet_ai_0419_biggan/
-            train/
-                ai/
-                nature/
-            val/
-                ai/
-                nature/
-
-        imagenet_ai_0419_vqdm/
-        imagenet_ai_0424_sdv5/
-        imagenet_ai_0424_wukong/
-        imagenet_ai_0508_adm/
-        imagenet_glide/
-        imagenet_midjourney/
     """
 
     GENERATORS = {
@@ -73,7 +52,9 @@ class GenImageAdapter(DatasetAdapter):
 
     def validate(self) -> None:
         """
-        Validate dataset structure.
+        Lightweight validation.
+
+        Only verifies directory structure.
         """
 
         if not self.root.exists():
@@ -99,24 +80,6 @@ class GenImageAdapter(DatasetAdapter):
                         f"Missing split directory: {split_dir}"
                     )
 
-                images = list(iter_images(split_dir))
-
-                if not images:
-                    raise ValueError(
-                        f"No images found inside {split_dir}"
-                    )
-
-                corrupt = [
-                    img
-                    for img in images
-                    if not verify_image(img)
-                ]
-
-                if corrupt:
-                    raise ValueError(
-                        f"{len(corrupt)} corrupt images found in {split_dir}"
-                    )
-
     def discover(
         self,
     ) -> Iterator[
@@ -134,11 +97,18 @@ class GenImageAdapter(DatasetAdapter):
 
             dataset_dir = self.root / folder
 
+            if not dataset_dir.exists():
+                continue
+
             for split_name, split in self.SPLITS.items():
 
                 split_dir = dataset_dir / split_name
 
+                if not split_dir.exists():
+                    continue
+
                 for image_path in iter_images(split_dir):
+
                     yield (
                         image_path,
                         generator,
@@ -153,9 +123,14 @@ class GenImageAdapter(DatasetAdapter):
     ) -> ImageMetadata:
         """
         Convert one image into ImageMetadata.
+
+        Opens each image only once.
         """
 
-        width, height = get_image_size(image_path)
+        with Image.open(image_path) as image:
+
+            width, height = image.size
+            channels = len(image.getbands())
 
         return ImageMetadata(
             image_id=f"GENIMAGE_{generator.value}_{image_path.stem}",
@@ -168,15 +143,16 @@ class GenImageAdapter(DatasetAdapter):
             split=split,
             width=width,
             height=height,
-            channels=get_num_channels(image_path),
+            channels=channels,
         )
 
     def build(self) -> Iterator[ImageMetadata]:
         """
         Stream ImageMetadata objects.
-        """
 
-        self.validate()
+        Validation is intentionally omitted during production
+        manifest generation.
+        """
 
         for image_path, generator, split in self.discover():
 

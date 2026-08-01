@@ -10,6 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterator, Optional
 
+from PIL import Image
+
 from ..base import DatasetAdapter
 from ..metadata import ImageMetadata
 from ..registry import register
@@ -21,11 +23,6 @@ from ..taxonomy import (
     Technique,
 )
 from ..utils.files import iter_images
-from ..utils.images import (
-    get_image_size,
-    get_num_channels,
-    verify_image,
-)
 
 
 @register("casia")
@@ -52,7 +49,11 @@ class CASIAAdapter(DatasetAdapter):
 
     def validate(self) -> None:
         """
-        Validate the CASIA dataset structure.
+        Lightweight validation.
+
+        Only verify directory structure.
+        Heavy image verification is intentionally omitted
+        for production manifest generation.
         """
 
         if not self.root.exists():
@@ -69,25 +70,6 @@ class CASIAAdapter(DatasetAdapter):
                     f"Missing required folder: {directory}"
                 )
 
-            images = list(iter_images(directory))
-
-            if not images:
-                raise ValueError(
-                    f"No images found inside {directory}"
-                )
-
-            corrupt = [
-                image
-                for image in images
-                if not verify_image(image)
-            ]
-
-            if corrupt:
-                raise ValueError(
-                    f"{len(corrupt)} corrupt images found in {directory}"
-                )
-
-        # Groundtruth masks are optional but, if present, should be a directory.
         groundtruth = self.root / "Groundtruth"
 
         if groundtruth.exists() and not groundtruth.is_dir():
@@ -97,25 +79,23 @@ class CASIAAdapter(DatasetAdapter):
 
     def discover(self) -> Iterator[tuple[Path, Authenticity]]:
         """
-        Discover all dataset images.
+        Discover dataset images.
         """
 
         for folder, authenticity in self.LABELS.items():
 
             directory = self.root / folder
 
+            if not directory.exists():
+                continue
+
             for image_path in iter_images(directory):
                 yield image_path, authenticity
 
-    def find_mask(self, image_path: Path) -> Optional[Path]:
-        """
-        Return the corresponding ground-truth mask if available.
-
-        Matching rule:
-            Tp_xxxxx.jpg
-            ->
-            Groundtruth/Tp_xxxxx.png
-        """
+    def find_mask(
+        self,
+        image_path: Path,
+    ) -> Optional[Path]:
 
         if image_path.parent.name != "Tp":
             return None
@@ -135,9 +115,14 @@ class CASIAAdapter(DatasetAdapter):
     ) -> ImageMetadata:
         """
         Convert one CASIA image into ImageMetadata.
+
+        Opens every image only once.
         """
 
-        width, height = get_image_size(image_path)
+        with Image.open(image_path) as image:
+
+            width, height = image.size
+            channels = len(image.getbands())
 
         return ImageMetadata(
             image_id=f"CASIA_{image_path.stem}",
@@ -155,17 +140,18 @@ class CASIAAdapter(DatasetAdapter):
             split=Split.TRAIN,
             width=width,
             height=height,
-            channels=get_num_channels(image_path),
+            channels=channels,
         )
 
     def build(self) -> Iterator[ImageMetadata]:
         """
-        Stream ImageMetadata objects from the dataset.
+        Stream ImageMetadata objects.
+
+        Validation is intentionally not executed here.
         """
 
-        self.validate()
-
         for image_path, authenticity in self.discover():
+
             yield self.map_sample(
                 image_path,
                 authenticity,

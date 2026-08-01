@@ -10,6 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterator
 
+from PIL import Image
+
 from ..base import DatasetAdapter
 from ..metadata import ImageMetadata
 from ..registry import register
@@ -21,11 +23,6 @@ from ..taxonomy import (
     Technique,
 )
 from ..utils.files import iter_images
-from ..utils.images import (
-    get_image_size,
-    get_num_channels,
-    verify_image,
-)
 
 
 @register("coco")
@@ -53,7 +50,10 @@ class COCOAdapter(DatasetAdapter):
 
     def validate(self) -> None:
         """
-        Validate the COCO dataset structure.
+        Lightweight validation.
+
+        Heavy image verification should NOT run while building
+        production manifests.
         """
 
         if not self.root.exists():
@@ -67,29 +67,8 @@ class COCOAdapter(DatasetAdapter):
 
             split_dir = self.root / folder
 
-            if not split_dir.exists():
-                continue
-
-            discovered_split = True
-
-            images = list(iter_images(split_dir))
-
-            if not images:
-                raise ValueError(
-                    f"No images found inside {split_dir}"
-                )
-
-            corrupt = [
-                image
-                for image in images
-                if not verify_image(image)
-            ]
-
-            if corrupt:
-                raise ValueError(
-                    f"{len(corrupt)} corrupt images detected "
-                    f"in {split_dir}"
-                )
+            if split_dir.exists():
+                discovered_split = True
 
         if not discovered_split:
             raise ValueError(
@@ -99,11 +78,6 @@ class COCOAdapter(DatasetAdapter):
     def discover(self) -> Iterator[tuple[Path, Split]]:
         """
         Discover all dataset images.
-
-        Yields
-        ------
-        tuple[Path, Split]
-            Image path and corresponding dataset split.
         """
 
         for folder, split in self.SPLITS.items():
@@ -123,9 +97,14 @@ class COCOAdapter(DatasetAdapter):
     ) -> ImageMetadata:
         """
         Convert one COCO image into ImageMetadata.
+
+        Opens every image only once.
         """
 
-        width, height = get_image_size(image_path)
+        with Image.open(image_path) as image:
+
+            width, height = image.size
+            channels = len(image.getbands())
 
         return ImageMetadata(
             image_id=f"COCO_{image_path.stem}",
@@ -138,16 +117,20 @@ class COCOAdapter(DatasetAdapter):
             split=split,
             width=width,
             height=height,
-            channels=get_num_channels(image_path),
-            
+            channels=channels,
         )
 
     def build(self) -> Iterator[ImageMetadata]:
         """
-        Stream ImageMetadata samples from the dataset.
+        Stream ImageMetadata samples.
+
+        Validation is intentionally omitted here because production
+        manifest generation should not spend hours verifying every
+        image before processing.
         """
 
-        self.validate()
-
         for image_path, split in self.discover():
-            yield self.map_sample(image_path, split)
+            yield self.map_sample(
+                image_path,
+                split,
+            )
