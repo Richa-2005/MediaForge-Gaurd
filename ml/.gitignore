@@ -25,4 +25,7 @@ __pycache__/
 ~/.kaggle/
 
 
+tests/
+scripts/
+fixtures/
 

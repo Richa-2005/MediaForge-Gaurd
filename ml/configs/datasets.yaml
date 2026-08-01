@@ -1,0 +1,124 @@
+# ==========================================================
+# MediaForge Vision
+# Dataset Configuration
+# ==========================================================
+
+version: "1.0"
+
+# ==========================================================
+# Runtime
+# ==========================================================
+
+runtime:
+
+  environment: "kaggle"        # kaggle | local
+
+# ==========================================================
+# Dataset Registry
+# ==========================================================
+
+datasets:
+
+  coco:
+
+    enabled: true
+
+    adapter: "coco"
+
+    type: "authentic"
+
+    fixture_root: "fixtures/coco"
+
+    kaggle_root: "/kaggle/input/coco-2017-dataset"
+
+  casia:
+
+    enabled: true
+
+    adapter: "casia"
+
+    type: "edited"
+
+    fixture_root: "fixtures/casia"
+
+    kaggle_root: "/kaggle/input/casia-v2"
+
+  genimage:
+
+    enabled: true
+
+    adapter: "genimage"
+
+    type: "ai_generated"
+
+    fixture_root: "fixtures/genimage"
+
+    kaggle_root: "/kaggle/input/tiny-genimage"
+
+# ==========================================================
+# Dataset Split
+# ==========================================================
+
+split:
+
+  train: 0.90
+
+  validation: 0.10
+
+  random_seed: 42
+
+  stratify: true
+
+# ==========================================================
+# Manifest Generation
+# ==========================================================
+
+manifest:
+
+  version: "v1"
+
+  output_dir: "artifacts/manifests"
+
+  train_file: "train.parquet"
+
+  validation_file: "val.parquet"
+
+  merged_file: "manifest_v1.parquet"
+
+  statistics: "stats.json"
+
+# ==========================================================
+# Validation
+# ==========================================================
+
+validation:
+
+  verify_images: true
+
+  compute_hashes: true
+
+  remove_duplicates: true
+
+  skip_corrupted: true
+
+# ==========================================================
+# Loader
+# ==========================================================
+
+loader:
+
+  recursive: true
+
+  follow_symlinks: false
+
+# ==========================================================
+# Future Options
+# ==========================================================
+
+sampling:
+
+  balance_classes: false
+
+  max_images_per_dataset: null
+
+  shuffle_before_split: true
