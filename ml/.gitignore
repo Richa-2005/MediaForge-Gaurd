@@ -1,5 +1,4 @@
 # Datasets
-datasets/raw/
 datasets/cache/
 
 # Training outputs
@@ -28,4 +27,5 @@ __pycache__/
 tests/
 scripts/
 fixtures/
-
+# PyTorch cache
+.cache/
