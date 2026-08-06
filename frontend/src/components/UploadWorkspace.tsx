@@ -44,6 +44,25 @@ function validateFile(file: File) {
   return null;
 }
 
+function submissionErrorMessage(error: unknown) {
+  const fallback = "The media could not be submitted.";
+  const message = error instanceof Error ? error.message : fallback;
+
+  if (message.includes("URL ingestion is not available yet")) {
+    return message.replace("Use a direct media URL for now.", "Use a direct media URL or a YouTube link for now.");
+  }
+
+  if (message.includes("YouTube URL ingestion requires yt-dlp")) {
+    return "YouTube links are detected, but this deployment is missing the downloader needed to import them.";
+  }
+
+  if (message.includes("Mock HTTP clients")) {
+    return "This URL source cannot be tested through the current browser session.";
+  }
+
+  return message;
+}
+
 export function UploadWorkspace() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -112,7 +131,7 @@ export function UploadWorkspace() {
         .catch(() => undefined);
     } catch (error) {
       setIntakeState("error");
-      setMessage(error instanceof Error ? error.message : "The media could not be submitted.");
+      setMessage(submissionErrorMessage(error));
     }
   };
 
@@ -205,8 +224,9 @@ export function UploadWorkspace() {
 
         <div className="upload-intake__divider"><span>or</span></div>
         <form className="url-intake" onSubmit={handleUrlSubmit}>
-          <label htmlFor="media-url">Submit a public media URL</label>
-          <div><input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/media" /><button className="quiet-button" type="submit" disabled={intakeState === "uploading"}>Analyze URL <Icon name="arrow" size={15} /></button></div>
+          <label htmlFor="media-url">Submit a direct media URL or YouTube link</label>
+          <div><input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/media.jpg or https://youtu.be/..." /><button className="quiet-button" type="submit" disabled={intakeState === "uploading"}>Analyze URL <Icon name="arrow" size={15} /></button></div>
+          <p className="url-intake__support">Supports direct image, text, audio, and video URLs. YouTube ingestion is experimental; other social links are detected but not supported yet.</p>
         </form>
       </section>
     </div>

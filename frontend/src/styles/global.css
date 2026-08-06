@@ -276,6 +276,7 @@ p { color: var(--text-muted); font-size: 1rem; line-height: 1.65; }
 .url-intake input::placeholder { color: var(--text-faint); }
 .url-intake input:focus { border-color: var(--copper); }
 .url-intake .quiet-button { flex: 0 0 auto; }
+.url-intake__support { max-width: 760px; margin: 13px 0 0; color: var(--text-faint); font-size: .78rem; line-height: 1.45; }
 .upload-pipeline { margin-top: 67px; padding-top: 0; }
 .upload-pipeline__header { max-width: 570px; }
 .upload-pipeline__header h2 { margin-bottom: 0; font-size: clamp(1.9rem, 3.2vw, 3rem); }
