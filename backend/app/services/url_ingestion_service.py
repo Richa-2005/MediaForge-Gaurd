@@ -294,8 +294,9 @@ async def extract_reddit_media_url(
             _validate_connected_peer(response)
             if response.status_code >= 300:
                 raise DownloadFailedError(
-                    "Reddit metadata download failed with HTTP status "
-                    f"{response.status_code}."
+                    "Reddit blocked this link or the post metadata could not be "
+                    "loaded. Try a direct image/video URL from the post, a "
+                    "YouTube link, or another direct media URL."
                 )
             _validate_social_metadata_length(response.headers)
             payload = b""

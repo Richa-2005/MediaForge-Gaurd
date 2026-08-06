@@ -197,6 +197,20 @@ def test_reddit_without_media_returns_clear_error(monkeypatch):
         )
 
 
+def test_reddit_blocked_metadata_returns_clear_error(monkeypatch):
+    def handler(request):
+        return httpx.Response(403, request=request)
+
+    with pytest.raises(service.DownloadFailedError, match="Reddit blocked"):
+        run(
+            ingest_with_handler(
+                monkeypatch,
+                "https://www.reddit.com/r/pics/comments/abc/title",
+                handler,
+            )
+        )
+
+
 def test_reddit_metadata_size_limit(monkeypatch):
     monkeypatch.setattr(service.settings, "URL_SOCIAL_METADATA_MAX_BYTES", 10)
 
