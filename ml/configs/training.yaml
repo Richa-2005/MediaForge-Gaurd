@@ -1,0 +1,78 @@
+# ==========================================================
+# MediaForge Vision
+# Training Configuration
+# ==========================================================
+
+experiment:
+
+  name: "vision_v1"
+
+  output_dir: "artifacts/experiments"
+
+data:
+
+  train_manifest: "artifacts/manifests/train.parquett"
+
+  val_manifest: "artifacts/manifests/val.parquet"
+
+training:
+
+  epochs: 25
+
+  batch_size: 32
+
+  num_workers: 4
+
+  pin_memory: true
+
+  mixed_precision: true
+
+optimizer:
+
+  name: adamw
+
+  learning_rate: 0.0003
+
+  backbone_lr: 0.0001
+
+  classifier_lr: 0.0003
+
+  weight_decay: 0.0001
+
+  betas: [0.9, 0.999]
+
+  eps: 1.0e-8
+
+scheduler:
+
+  name: "cosine"
+
+  warmup_epochs: 2
+
+loss:
+
+  name: cross_entropy
+
+  use_class_weights: false
+
+  class_weights: [1.0, 1.0]
+
+  label_smoothing: 0.05
+
+checkpoint:
+
+  save_best_only: true
+
+  monitor: "val_f1"
+
+logging:
+
+  save_metrics: true
+
+  save_confusion_matrix: true
+
+  save_classification_report: true
+
+seed:
+
+  value: 42

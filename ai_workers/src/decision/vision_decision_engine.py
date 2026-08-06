@@ -1,3 +1,4 @@
+from src.schemas import evidence
 from src.schemas.analysis_result import AnalysisResult
 from src.schemas.evidence import Evidence
 
@@ -15,66 +16,36 @@ class VisionDecisionEngine:
     }
 
     def evaluate(
-        self,
+       self,
+        prediction: dict,
         evidence: list[Evidence],
     ) -> AnalysisResult:
 
-        if not evidence:
-            return AnalysisResult(
-                label="uncertain",
-                risk_score=0.0,
-                confidence=0.0,
-                explanation="No visual evidence available.",
-                evidence=[],
-            )
+        label = prediction["label"]
 
-        weighted_score = 0.0
-        total_weight = 0.0
-
-        for item in evidence:
-
-            weight = self.WEIGHTS.get(
-                item.method,
-                0.0,
-            )
-
-            weighted_score += item.score * weight
-            total_weight += weight
+        confidence = prediction["confidence"]
 
         risk_score = (
-            weighted_score / total_weight
-            if total_weight > 0
-            else 0.0
-        )
-
-        confidence = sum(
-            item.confidence
-            for item in evidence
-        ) / len(evidence)
-
-        # ---------- Standardized labels ----------
-
-        label = (
-            "manipulated"
-            if risk_score >= 0.5
-            else "authentic"
-        )
-
-        strongest = max(
-            evidence,
-            key=lambda item: item.score,
+            confidence
+            if label == "manipulated"
+            else 1.0 - confidence
         )
 
         explanation = (
-            f"{strongest.method} detected the strongest "
-            f"forensic signal "
-            f"(score={strongest.score:.2f})."
+            f"MediaForge Vision classified this image as "
+            f"{label} "
+            f"with {confidence:.2%} confidence."
         )
 
         return AnalysisResult(
+
             label=label,
+
             risk_score=round(risk_score, 4),
+
             confidence=round(confidence, 4),
+
             explanation=explanation,
+
             evidence=evidence,
         )
