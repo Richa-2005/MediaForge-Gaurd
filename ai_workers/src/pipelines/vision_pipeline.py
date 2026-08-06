@@ -6,6 +6,7 @@ from src.forensics.fft import FFTAnalyzer
 from src.forensics.noise import NoiseAnalyzer
 from src.processors.face_processor import process_faces
 from src.schemas.evidence import Evidence
+from src.processors.mediaforge_predictor import MediaForgePredictor
 
 import logging
 
@@ -17,7 +18,8 @@ class VisionPipeline:
     """
 
     def __init__(self):
-
+        self.predictor = MediaForgePredictor()
+         
         self.analyzers = [
             ELAAnalyzer(),
             NoiseAnalyzer(),
@@ -57,6 +59,8 @@ class VisionPipeline:
             logger.exception("Face processing failed")
             face_results = {}
 
+        prediction = self.predictor.predict(image_path)
+
         evidence: list[Evidence] = []
 
         for analyzer in self.analyzers:
@@ -87,14 +91,14 @@ class VisionPipeline:
                         analyzer.__class__.__name__,
                     )
 
-        return evidence, face_results
+        return (prediction, evidence, face_results)
 
 
 if __name__ == "__main__":
 
     pipeline = VisionPipeline()
 
-    evidence, faces = pipeline.run(
+    prediction, evidence, faces = pipeline.run(
         image_path=Path("data/sample_images/sample_img.jpg"),
         output_dir=Path("outputs/pipeline"),
     )

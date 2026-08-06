@@ -23,12 +23,13 @@ class VisionAgent:
         upload_id: int,
 ) -> AgentResult:
 
-        evidence, face_data = self.pipeline.run(
+        prediction,evidence, face_data = self.pipeline.run(
             image_path,
             PROCESSED_IMAGE_DIR,
         )
 
         analysis = self.decision_engine.evaluate(
+            prediction,
             evidence
         )
 
@@ -37,7 +38,16 @@ class VisionAgent:
             agent="vision",
             analysis=analysis,
             details={
-                "faces": face_data,
+                "model": {
+                        "name": "MediaForge Vision",
+                        "version": "v1",
+                        "prediction": prediction["label"],
+                        "confidence": prediction["confidence"],
+                        "probabilities": prediction["probabilities"],
+                    },
+
+                  "faces": face_data,
+                
             },
         )
 
