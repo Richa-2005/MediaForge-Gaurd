@@ -47,9 +47,14 @@ function validateFile(file: File) {
 function submissionErrorMessage(error: unknown) {
   const fallback = "The media could not be submitted.";
   const message = error instanceof Error ? error.message : fallback;
+  const unsupportedPlatform = message.match(/^(Instagram|X|Tiktok|Facebook) URL ingestion is not available yet\./);
 
-  if (message.includes("URL ingestion is not available yet")) {
-    return message.replace("Use a direct media URL for now.", "Use a direct media URL or a YouTube link for now.");
+  if (unsupportedPlatform) {
+    return `${unsupportedPlatform[1]} links are detected, but this platform is not supported yet. Use a direct media URL, YouTube link, or Reddit media post.`;
+  }
+
+  if (message.includes("Reddit URL did not contain a direct media item")) {
+    return "This Reddit link was detected, but no downloadable image or video was found. Try a Reddit media post or use a direct media URL.";
   }
 
   if (message.includes("YouTube URL ingestion requires yt-dlp")) {
@@ -224,9 +229,9 @@ export function UploadWorkspace() {
 
         <div className="upload-intake__divider"><span>or</span></div>
         <form className="url-intake" onSubmit={handleUrlSubmit}>
-          <label htmlFor="media-url">Submit a direct media URL or YouTube link</label>
-          <div><input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/media.jpg or https://youtu.be/..." /><button className="quiet-button" type="submit" disabled={intakeState === "uploading"}>Analyze URL <Icon name="arrow" size={15} /></button></div>
-          <p className="url-intake__support">Supports direct image, text, audio, and video URLs. YouTube ingestion is experimental; other social links are detected but not supported yet.</p>
+          <label htmlFor="media-url">Submit a direct media URL, YouTube link, or Reddit media post</label>
+          <div><input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/media.jpg, https://youtu.be/..., or Reddit media post" /><button className="quiet-button" type="submit" disabled={intakeState === "uploading"}>Analyze URL <Icon name="arrow" size={15} /></button></div>
+          <p className="url-intake__support">Supports direct image, text, audio, and video URLs, plus YouTube links and Reddit media posts. Instagram, X, TikTok, and Facebook are detected but not supported yet.</p>
         </form>
       </section>
     </div>

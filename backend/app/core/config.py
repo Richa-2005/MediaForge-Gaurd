@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     UPLOAD_DIR: Path = BACKEND_ROOT / "storage" / "uploads"
     MAX_UPLOAD_SIZE_BYTES : int = 50 * 1024 * 1024
     URL_DOWNLOAD_TIMEOUT_SECONDS: float = 15.0
+    URL_SOCIAL_DOWNLOAD_TIMEOUT_SECONDS: float = 30.0
+    URL_SOCIAL_METADATA_MAX_BYTES: int = 1024 * 1024
     URL_MAX_REDIRECTS: int = 5
     ALLOWED_MIME_TYPES : set[str] = {
         "image/jpg",

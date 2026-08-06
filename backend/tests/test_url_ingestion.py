@@ -136,10 +136,86 @@ def test_detect_url_platform(url, platform):
     assert service.detect_url_platform(url) == platform
 
 
+def test_reddit_url_ingestion_extracts_direct_media(monkeypatch):
+    requested_paths = []
+
+    def handler(request):
+        requested_paths.append(request.url.path)
+        if request.url.path.endswith(".json"):
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "data": {
+                            "children": [
+                                {
+                                    "data": {
+                                        "url_overridden_by_dest": (
+                                            "https://i.redd.it/sample.jpg"
+                                        )
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                request=request,
+            )
+        return httpx.Response(200, content=JPEG_BYTES, request=request)
+
+    result, captured = run(
+        ingest_with_handler(
+            monkeypatch,
+            "https://www.reddit.com/r/pics/comments/abc/title",
+            handler,
+        )
+    )
+
+    assert result["media_type"] == "image"
+    assert captured["bytes"] == JPEG_BYTES
+    assert requested_paths == [
+        "/r/pics/comments/abc/title.json",
+        "/sample.jpg",
+    ]
+
+
+def test_reddit_without_media_returns_clear_error(monkeypatch):
+    def handler(request):
+        return httpx.Response(
+            200,
+            json=[{"data": {"children": [{"data": {"title": "discussion"}}]}}],
+            request=request,
+        )
+
+    with pytest.raises(service.UnsupportedPlatformError, match="direct media"):
+        run(
+            ingest_with_handler(
+                monkeypatch,
+                "https://www.reddit.com/r/news/comments/abc/title",
+                handler,
+            )
+        )
+
+
+def test_reddit_metadata_size_limit(monkeypatch):
+    monkeypatch.setattr(service.settings, "URL_SOCIAL_METADATA_MAX_BYTES", 10)
+
+    def handler(request):
+        return httpx.Response(200, content=b"x" * 11, request=request)
+
+    with pytest.raises(service.DownloadTooLargeError, match="metadata"):
+        run(
+            ingest_with_handler(
+                monkeypatch,
+                "https://www.reddit.com/r/pics/comments/abc/title",
+                handler,
+            )
+        )
+
+
 @pytest.mark.parametrize(
     "url",
     [
-        "https://reddit.com/r/news/comments/abc/post",
         "https://www.instagram.com/p/abc",
         "https://x.com/example/status/1",
         "https://www.tiktok.com/@example/video/1",
