@@ -121,6 +121,47 @@ def test_valid_direct_media_urls(
 
 
 @pytest.mark.parametrize(
+    ("url", "platform"),
+    [
+        ("https://youtube.com/watch?v=abc", "youtube"),
+        ("https://www.youtube.com/shorts/abc", "youtube"),
+        ("https://youtu.be/abc", "youtube"),
+        ("https://reddit.com/r/news/comments/abc/post", "reddit"),
+        ("https://www.instagram.com/p/abc", "instagram"),
+        ("https://x.com/example/status/1", "x"),
+        ("https://media.example/image.jpg", "direct"),
+    ],
+)
+def test_detect_url_platform(url, platform):
+    assert service.detect_url_platform(url) == platform
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://reddit.com/r/news/comments/abc/post",
+        "https://www.instagram.com/p/abc",
+        "https://x.com/example/status/1",
+        "https://www.tiktok.com/@example/video/1",
+        "https://facebook.com/example/videos/1",
+    ],
+)
+def test_unsupported_social_platforms_are_clear(url):
+    with pytest.raises(service.UnsupportedPlatformError, match="not available yet"):
+        run(service.ingest_media_url(url, Mock()))
+
+
+def test_youtube_requires_ytdlp(monkeypatch):
+    monkeypatch.setattr(service.shutil, "which", lambda _name: None)
+
+    with pytest.raises(
+        service.ExternalDownloaderUnavailableError,
+        match="yt-dlp",
+    ):
+        run(service.ingest_media_url("https://youtu.be/demo", Mock()))
+
+
+@pytest.mark.parametrize(
     "url",
     [
         "file:///tmp/media.mp4",
@@ -361,8 +402,9 @@ def test_url_ingestion_uses_existing_upload_creation(
     Base.metadata.create_all(engine)
     monkeypatch.setattr(service.settings, "UPLOAD_DIR", tmp_path / "uploads")
     enqueue = Mock()
+    enqueue.return_value.id = "task-1"
     monkeypatch.setattr(
-        "app.services.upload_service.process_upload.delay",
+        "app.services.upload_service.celery_app.send_task",
         enqueue,
     )
 
@@ -388,4 +430,9 @@ def test_url_ingestion_uses_existing_upload_creation(
         assert upload.mime_type == "image/jpeg"
         assert upload.stored_filename.endswith(".jpg")
         assert processing_run.upload_id == upload.id
-        enqueue.assert_called_once_with(upload.id, processing_run.id)
+        enqueue.assert_called_once_with(
+            "process_upload",
+            args=[upload.id, processing_run.id],
+            queue="image_queue",
+            ignore_result=True,
+        )

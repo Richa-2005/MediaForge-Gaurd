@@ -1,5 +1,6 @@
 import type { ProcessingStep, UploadSummary } from "../types/dashboard";
 import { formatTime } from "../utils/dateTime";
+import { describeStep, formatStepName } from "../utils/processingSteps";
 import { StatusBadge } from "./StatusBadge";
 
 function formatDuration(duration: number | null) {
@@ -10,11 +11,12 @@ function formatDuration(duration: number | null) {
 function ActivityStep({ step }: { step: ProcessingStep }) {
   return (
     <article className="activity-step">
-      <div className="activity-step__title"><h3>{step.step_name}</h3><StatusBadge status={step.status} /></div>
+      <div className="activity-step__title"><h3>{formatStepName(step.step_name)}</h3><StatusBadge status={step.status} /></div>
       <div className="activity-step__details">
         {formatDuration(step.duration_ms) && <span>{formatDuration(step.duration_ms)}</span>}
         {step.started_at && <span>Started {formatTime(step.started_at)}</span>}
       </div>
+      <p>{describeStep(step.step_name)}</p>
       {step.error_message && <p className="activity-step__error">{step.error_message}</p>}
     </article>
   );

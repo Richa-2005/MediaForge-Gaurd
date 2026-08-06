@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.models.processing_step import ProcessingStep, StepStatus
 from app.services.execution_service import (
-    create_step, start_step, complete_step
+    get_or_create_step, start_step, complete_step
 )
 
 import logging
@@ -58,7 +58,7 @@ def run_preprocessing(upload, run, db : Session):
         )
 
         if media_preprocessing_step is None:
-            media_preprocessing_step = create_step(
+            media_preprocessing_step = get_or_create_step(
                 run.id,
                 "preprocessing",
                 db,

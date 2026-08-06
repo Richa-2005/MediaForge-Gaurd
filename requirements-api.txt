@@ -15,6 +15,7 @@ redis==8.0.1
 # Upload handling
 python-magic==0.4.27
 python-multipart==0.0.32
+yt-dlp==2026.7.4
 
 # LLM reporting schemas/imports used by backend modules
 langchain-core==1.4.9

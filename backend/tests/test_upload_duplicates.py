@@ -5,12 +5,13 @@ from unittest.mock import Mock
 import httpx
 import pytest
 from fastapi import UploadFile
+from fastapi import HTTPException
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.base import Base
-from app.models.upload import Upload
+from app.models.upload import Upload, UploadStatus
 from app.models.user import User
 from app.services import upload_service
 from app.services import url_ingestion_service
@@ -58,7 +59,8 @@ def upload_environment(monkeypatch, tmp_path):
         lambda _header: "text/plain",
     )
     enqueue = Mock()
-    monkeypatch.setattr(upload_service.process_upload, "delay", enqueue)
+    enqueue.return_value.id = "task-1"
+    monkeypatch.setattr(upload_service.celery_app, "send_task", enqueue)
     return enqueue
 
 
@@ -66,6 +68,14 @@ def make_upload(filename="sample.txt"):
     return UploadFile(
         file=BytesIO(TEXT_BYTES),
         size=len(TEXT_BYTES),
+        filename=filename,
+    )
+
+
+def make_video_upload(filename="sample.mp4"):
+    return UploadFile(
+        file=BytesIO(b"fake video bytes"),
+        size=len(b"fake video bytes"),
         filename=filename,
     )
 
@@ -104,6 +114,54 @@ async def test_different_users_can_upload_same_file(db, users, upload_environmen
     assert second["upload_id"] != first["upload_id"]
     assert second["is_duplication"] is False
     assert upload_environment.call_count == 2
+
+
+def test_processing_queue_for_media_type():
+    assert upload_service.processing_queue_for_media_type("image") == "image_queue"
+    assert upload_service.processing_queue_for_media_type("text") == "text_queue"
+    assert upload_service.processing_queue_for_media_type("video") == "video_queue"
+    assert upload_service.processing_queue_for_media_type("audio") == "audio_queue"
+    assert upload_service.processing_queue_for_media_type("unknown") == "celery"
+
+
+@pytest.mark.anyio
+async def test_heavy_media_capacity_rejects_when_busy(
+    db,
+    users,
+    monkeypatch,
+    upload_environment,
+):
+    user, _ = users
+    db.add(
+        Upload(
+            user_id=user.id,
+            original_filename="busy.mp4",
+            stored_filename="busy.mp4",
+            file_path="/tmp/busy.mp4",
+            media_type="video",
+            mime_type="video/mp4",
+            file_size=10,
+            sha256_hash="b" * 64,
+            status=UploadStatus.QUEUED,
+        )
+    )
+    db.commit()
+    monkeypatch.setattr(
+        upload_service,
+        "detect_media_mime",
+        lambda _header: "video/mp4",
+    )
+    monkeypatch.setattr(upload_service.settings, "MAX_ACTIVE_HEAVY_JOBS", 1)
+
+    with pytest.raises(HTTPException) as exc:
+        await upload_service.create_upload(
+            make_video_upload(),
+            db,
+            user,
+        )
+
+    assert exc.value.status_code == 429
+    assert upload_environment.call_count == 0
 
 
 @pytest.mark.anyio

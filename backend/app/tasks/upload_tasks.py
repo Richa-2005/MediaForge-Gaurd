@@ -3,7 +3,14 @@ from app.database.session import SessionLocal
 from datetime import datetime, timezone
 from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus
+from app.models.processing_step import StepStatus
 from app.services.execution_service import complete_processing, fail_processing
+from app.services.execution_service import (
+    complete_step,
+    fail_step,
+    get_or_create_step,
+    start_step,
+)
 from app.services.analysis_service import run_analysis
 from sqlalchemy.exc import OperationalError
 import logging
@@ -25,7 +32,7 @@ RETRYABLE_EXCEPTIONS = (
 def process_upload(self, upload_id: int, run_id: int):
     db = SessionLocal()
     running = None
-    media_preprocessing_step = None
+    current_step = None
     saved = []
 
     try:
@@ -52,16 +59,29 @@ def process_upload(self, upload_id: int, run_id: int):
             upload.media_type,
         )
 
-        saved, media_preprocessing_step = run_preprocessing(
+        saved, current_step = run_preprocessing(
             upload,
             running,
             db,
         )
 
-        saved_results = run_analysis(
-            upload,
+        current_step = get_or_create_step(
+            running.id,
+            "analysis",
             db,
         )
+        if current_step.status == StepStatus.PENDING:
+            start_step(current_step, db)
+
+        try:
+            saved_results = run_analysis(
+                upload,
+                db,
+            )
+            complete_step(current_step, db)
+        except Exception as e:
+            fail_step(current_step, str(e), db)
+            raise
 
         complete_processing(
             saved_results,
@@ -82,7 +102,7 @@ def process_upload(self, upload_id: int, run_id: int):
         db.rollback()
 
         if self.request.retries >= self.max_retries:
-            fail_processing(upload_id,running,media_preprocessing_step,e,db)
+            fail_processing(upload_id,running,current_step,e,db)
 
             logger.exception(
                 "Processing failed after retries exhausted | upload_id=%s attempts=%s",
@@ -104,7 +124,7 @@ def process_upload(self, upload_id: int, run_id: int):
     except Exception as e:
         db.rollback()
 
-        fail_processing(upload_id,running,media_preprocessing_step,e,db)
+        fail_processing(upload_id,running,current_step,e,db)
         
         logger.exception(
             "Processing failed | upload_id=%s",

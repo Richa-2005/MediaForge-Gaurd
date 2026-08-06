@@ -58,6 +58,25 @@ def create_step(
 
     return row
 
+
+def get_or_create_step(
+    processing_run_id: int,
+    step_name: str,
+    db: Session,
+) -> ProcessingStep:
+    existing = (
+        db.query(ProcessingStep)
+        .filter(
+            ProcessingStep.processing_run_id == processing_run_id,
+            ProcessingStep.step_name == step_name,
+        )
+        .first()
+    )
+    if existing is not None:
+        return existing
+
+    return create_step(processing_run_id, step_name, db)
+
 def start_step(
     step: ProcessingStep,
     db: Session
@@ -167,13 +186,24 @@ def complete_processing(
         key=lambda result: result.risk_score,
     )
 
+    report_step = get_or_create_step(
+        running.id,
+        "report_generation",
+        db,
+    )
+
+    if report_step.status == StepStatus.PENDING:
+        start_step(report_step, db)
+
     try:
         generate_upload_report(
             upload_id=upload.id,
             primary_analysis_id=primary_result.id,
             db=db,
         )
+        complete_step(report_step, db)
     except Exception:
+        fail_step(report_step, "Report generation failed.", db)
         logger.exception(
             "Unable to generate LLM report "
             "for analysis_id=%s",

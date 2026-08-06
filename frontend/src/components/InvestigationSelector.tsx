@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { UploadRecord } from "../types/upload";
 import { formatTimestamp } from "../utils/dateTime";
+import { uploadActionLabel, uploadDestination } from "../utils/processingSteps";
 import { StatusBadge } from "./StatusBadge";
 import { InvestigationBoardBackdrop } from "./InvestigationBoardBackdrop";
 
@@ -47,7 +48,7 @@ export function InvestigationSelector({ uploads, selectedId, onSelect, loading, 
                 <span className="investigation-choice__time">{formatTimestamp(upload.created_at)}</span>
                 <StatusBadge status={upload.status} />
               </button>
-              <a className="investigation-choice__results" href={`/results?uploadId=${upload.id}`}>Review results <span aria-hidden="true">→</span></a>
+              <a className="investigation-choice__results" href={uploadDestination(upload)}>{uploadActionLabel(upload)} <span aria-hidden="true">→</span></a>
             </article>
           ))}
           </div>

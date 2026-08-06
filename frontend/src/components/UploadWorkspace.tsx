@@ -1,12 +1,11 @@
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { getUploadStatus, submitFile, submitMediaUrl } from "../services/uploadService";
+import { submitFile, submitMediaUrl } from "../services/uploadService";
 import { getUploadSummary } from "../services/dashboardService";
 import type { UploadSummary } from "../types/dashboard";
 import type { UploadStatus } from "../types/upload";
 import { isInvestigationFinished } from "../utils/investigation";
 import { Icon } from "./Icon";
 import { MediaPassportIllustration } from "./MediaPassportIllustration";
-import { UploadPipelinePreview } from "./UploadPipelinePreview";
 
 type IntakeState = "idle" | "uploading" | "accepted" | "invalid" | "started" | "error";
 
@@ -210,8 +209,6 @@ export function UploadWorkspace() {
           <div><input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/media" /><button className="quiet-button" type="submit" disabled={intakeState === "uploading"}>Analyze URL <Icon name="arrow" size={15} /></button></div>
         </form>
       </section>
-
-      <UploadPipelinePreview hasSelection={Boolean(selectedFile || url)} state={intakeState} uploadStatus={uploadStatus} />
     </div>
   );
 }

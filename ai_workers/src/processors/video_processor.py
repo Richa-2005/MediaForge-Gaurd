@@ -1,7 +1,13 @@
 import cv2
 from pathlib import Path
 
-from src.constants import FRAME_SKIP, FRAME_PREFIX, FRAME_EXTENSION
+from src.constants import (
+    FRAME_SKIP,
+    FRAME_PREFIX,
+    FRAME_EXTENSION,
+    MAX_VIDEO_ANALYSIS_FRAMES,
+    VIDEO_SAMPLE_FPS,
+)
 
 
 def get_video_metadata(video_path: Path) -> dict:
@@ -31,7 +37,23 @@ def get_video_metadata(video_path: Path) -> dict:
     }
 
 
-def extract_frames(video_path: Path, output_dir: Path) -> list[Path]:
+def frame_sample_interval(
+    source_fps: float,
+    target_fps: int = VIDEO_SAMPLE_FPS,
+) -> int:
+    if source_fps <= 0 or target_fps <= 0:
+        return FRAME_SKIP
+
+    return max(1, round(source_fps / target_fps))
+
+
+def extract_frames(
+    video_path: Path,
+    output_dir: Path,
+    *,
+    max_frames: int = MAX_VIDEO_ANALYSIS_FRAMES,
+    target_fps: int = VIDEO_SAMPLE_FPS,
+) -> list[Path]:
     if not video_path.exists():
         raise FileNotFoundError(f"{video_path} does not exist.")
 
@@ -42,16 +64,23 @@ def extract_frames(video_path: Path, output_dir: Path) -> list[Path]:
     if not cap.isOpened():
         raise ValueError(f"Unable to open video: {video_path}")
 
+    sample_interval = frame_sample_interval(
+        cap.get(cv2.CAP_PROP_FPS),
+        target_fps,
+    )
     frame_number = 0
     saved_frames: list[Path] = []
 
     while True:
+        if len(saved_frames) >= max_frames:
+            break
+
         success, frame = cap.read()
 
         if not success:
             break
 
-        if frame_number % FRAME_SKIP == 0:
+        if frame_number % sample_interval == 0:
             frame_path = (
                 output_dir
                 / f"{FRAME_PREFIX}{len(saved_frames):04d}{FRAME_EXTENSION}"

@@ -24,4 +24,4 @@ COPY ai_workers ./ai_workers
 
 WORKDIR /app/backend
 
-CMD ["celery", "-A", "app.core.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=1"]
+CMD ["celery", "-A", "app.core.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=1", "-Q", "image_queue,text_queue,video_queue,audio_queue,celery"]

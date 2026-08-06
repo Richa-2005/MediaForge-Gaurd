@@ -38,6 +38,7 @@ Pillow==11.3.0
 python-magic==0.4.27
 python-multipart==0.0.32
 openai-whisper==20250625
+yt-dlp==2026.7.4
 
 # Testing
 pytest==9.1.1

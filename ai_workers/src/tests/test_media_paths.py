@@ -7,6 +7,7 @@ from src.pipelines.audio_pipeline import AudioPipeline
 from src.processors.audio_processor import extract_audio
 from src.processors.video_processor import (
     extract_frames,
+    frame_sample_interval,
     get_video_metadata,
 )
 
@@ -29,6 +30,12 @@ def test_video_processor_rejects_missing_input(tmp_path):
 
     with pytest.raises(FileNotFoundError, match="does not exist"):
         extract_frames(missing, tmp_path / "frames")
+
+
+def test_video_frame_sample_interval_uses_target_fps():
+    assert frame_sample_interval(30, 1) == 30
+    assert frame_sample_interval(24, 2) == 12
+    assert frame_sample_interval(0, 1) > 0
 
 
 def test_audio_processor_rejects_missing_video(tmp_path):

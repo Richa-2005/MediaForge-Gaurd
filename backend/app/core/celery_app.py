@@ -1,5 +1,6 @@
 from app.core.config import settings
 from celery import Celery
+from kombu import Queue
 import ssl
 import sys
 
@@ -19,10 +20,17 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
-    # Native CV/ML libraries can abort a forked process on macOS.
-    # The solo pool avoids unsafe post-fork native initialization.
+   
     worker_pool="solo" if sys.platform == "darwin" else "prefork",
     worker_concurrency=1 if sys.platform == "darwin" else None,
+    task_default_queue="celery",
+    task_queues=(
+        Queue("celery"),
+        Queue("image_queue"),
+        Queue("text_queue"),
+        Queue("video_queue"),
+        Queue("audio_queue"),
+    ),
 )
 
 if settings.CELERY_BROKER_URL.startswith("rediss://"):

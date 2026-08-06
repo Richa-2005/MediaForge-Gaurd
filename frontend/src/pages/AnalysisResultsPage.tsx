@@ -40,6 +40,13 @@ export function AnalysisResultsPage() {
     return () => window.clearInterval(interval);
   }, [summary]);
 
+  useEffect(() => {
+    if (!summary) return;
+    if (summary.upload.status === "queued" || summary.upload.status === "processing") {
+      window.location.replace(`/progress?uploadId=${summary.upload.id}`);
+    }
+  }, [summary]);
+
   return (
     <div className="site-shell results-page">
       <a className="skip-link" href="#main-content">Skip to content</a>
