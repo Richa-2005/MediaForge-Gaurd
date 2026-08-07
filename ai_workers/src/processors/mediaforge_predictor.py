@@ -44,13 +44,34 @@ class MediaForgePredictor:
 
     def _load_model(self):
 
-        model_path = (
+        from huggingface_hub import hf_hub_download
+
+        weights_dir = (
             Path(__file__)
             .resolve()
             .parents[1]
             / "weights"
-            / "mediaforge_vision_v1.pth"
         )
+
+        weights_dir.mkdir(parents=True, exist_ok=True)
+
+        model_path = weights_dir / "mediaforge_vision_v1.pth"
+
+        if not model_path.exists():
+
+            print(
+                "Downloading MediaForge Vision weights from Hugging Face..."
+            )
+
+            downloaded_path = hf_hub_download(
+                repo_id="rashmijha06/mediaforge_vision",
+                filename="mediaforge_vision_v1.pth",
+                local_dir=weights_dir,
+            )
+
+            model_path = Path(downloaded_path)
+
+        print(f"Loading MediaForge Vision weights from {model_path}")
 
         weights = torch.load(
             model_path,
