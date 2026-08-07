@@ -47,7 +47,7 @@ class MediaForgePredictor:
         model_path = (
             Path(__file__)
             .resolve()
-            .parents[2]
+            .parents[1]
             / "weights"
             / "mediaforge_vision_v1.pth"
         )
