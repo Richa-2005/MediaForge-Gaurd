@@ -1,4 +1,5 @@
 from app.core.celery_app import celery_app
+from app.core.config import settings
 from app.database.session import SessionLocal
 from datetime import datetime, timezone
 from app.models.upload import Upload, UploadStatus
@@ -15,6 +16,7 @@ from app.services.analysis_service import run_analysis
 from sqlalchemy.exc import OperationalError
 import logging
 from app.services.processing_service import run_preprocessing
+from billiard.exceptions import SoftTimeLimitExceeded
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,8 @@ RETRYABLE_EXCEPTIONS = (
     name="process_upload",
     bind=True,
     max_retries=3,
+    soft_time_limit=settings.PROCESSING_TASK_SOFT_TIME_LIMIT_SECONDS,
+    time_limit=settings.PROCESSING_TASK_TIME_LIMIT_SECONDS,
 )
 def process_upload(self, upload_id: int, run_id: int):
     db = SessionLocal()
@@ -120,6 +124,21 @@ def process_upload(self, upload_id: int, run_id: int):
             e,
         )
         raise self.retry(exc=e, countdown=countdown)
+
+    except SoftTimeLimitExceeded as e:
+        db.rollback()
+
+        error = TimeoutError(
+            "Processing exceeded the configured time limit."
+        )
+        fail_processing(upload_id, running, current_step, error, db)
+
+        logger.exception(
+            "Processing timed out | upload_id=%s soft_limit=%ss",
+            upload_id,
+            settings.PROCESSING_TASK_SOFT_TIME_LIMIT_SECONDS,
+        )
+        raise
 
     except Exception as e:
         db.rollback()
