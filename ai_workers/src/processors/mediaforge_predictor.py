@@ -1,6 +1,8 @@
 from pathlib import Path
+import os
 
 import torch
+from huggingface_hub import hf_hub_download
 from PIL import Image
 from torchvision import transforms
 
@@ -11,6 +13,17 @@ CLASS_NAMES = {
     0: "authentic",
     1: "manipulated",
 }
+
+
+DEFAULT_REPO_ID = "rashmijha06/mediaforge_vision"
+DEFAULT_FILENAME = "mediaforge_vision_v1.pth"
+DEFAULT_WEIGHTS_PATH = (
+    Path(__file__).resolve().parents[2] / "weights" / DEFAULT_FILENAME
+)
+
+
+class MediaForgeWeightsError(RuntimeError):
+    """Raised when MediaForge Vision weights cannot be loaded."""
 
 
 class MediaForgePredictor:
@@ -44,13 +57,7 @@ class MediaForgePredictor:
 
     def _load_model(self):
 
-        model_path = (
-            Path(__file__)
-            .resolve()
-            .parents[2]
-            / "weights"
-            / "mediaforge_vision_v1.pth"
-        )
+        model_path = resolve_weights_path()
 
         model = MediaForgeVision()
 
@@ -95,3 +102,67 @@ class MediaForgePredictor:
             "probabilities": probs.squeeze().cpu().tolist(),
 
         }
+
+
+def resolve_weights_path() -> Path:
+    weights_path = Path(
+        os.getenv(
+            "MEDIAFORGE_VISION_WEIGHTS_PATH",
+            str(DEFAULT_WEIGHTS_PATH),
+        )
+    )
+
+    if weights_path.exists():
+        return weights_path
+
+    return download_weights(weights_path)
+
+
+def download_weights(weights_path: Path) -> Path:
+    repo_id = os.getenv(
+        "MEDIAFORGE_VISION_REPO_ID",
+        DEFAULT_REPO_ID,
+    )
+    filename = os.getenv(
+        "MEDIAFORGE_VISION_FILENAME",
+        DEFAULT_FILENAME,
+    )
+    token = os.getenv("HF_TOKEN")
+
+    if not token:
+        raise MediaForgeWeightsError(
+            "MediaForge Vision weights were not found locally and HF_TOKEN "
+            "is not configured. Set HF_TOKEN for the private Hugging Face "
+            f"repo {repo_id}, or mount the weights at {weights_path}."
+        )
+
+    weights_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    try:
+        downloaded_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            token=token,
+            local_dir=str(weights_path.parent),
+        )
+    except Exception as exc:
+        raise MediaForgeWeightsError(
+            "Failed to download MediaForge Vision weights from Hugging Face "
+            f"repo {repo_id}. Check HF_TOKEN, repo access, and filename "
+            f"{filename}."
+        ) from exc
+
+    downloaded_path = Path(downloaded_path)
+    if not downloaded_path.exists():
+        raise MediaForgeWeightsError(
+            "Hugging Face download completed but the weights file was not "
+            f"found at {downloaded_path}."
+        )
+
+    if downloaded_path != weights_path and not weights_path.exists():
+        downloaded_path.replace(weights_path)
+
+    return weights_path

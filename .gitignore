@@ -47,6 +47,8 @@ backend/logs/
 # Backend and worker generated storage
 ai_workers/outputs/
 ai_workers/temp/
+ai_workers/src/weights/
+!ai_workers/src/weights/.gitkeep
 backend/storage/uploads/
 backend/storage/processing/
 
