@@ -10,15 +10,21 @@ from pathlib import Path
 from urllib.parse import urlparse
 from uuid import uuid4
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
+from app.models.processing_step import StepStatus
 from app.models.user import User
 from app.core.celery_app import celery_app
 from app.services.storage_service import (
     build_storage_key,
     upload_to_supabase_storage,
+)
+from app.services.execution_service import (
+    complete_step,
+    get_or_create_step,
+    start_step,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,6 +42,10 @@ MIME_EXTENSIONS = {
     "audio/x-wav": ".wav",
     "text/plain": ".txt",
 }
+
+
+def processing_queue_for_media_type(media_type: str) -> str:
+    return settings.MEDIA_PROCESSING_QUEUES.get(media_type, "celery")
 
 
 def detect_media_mime(header_bytes: bytes) -> str:
@@ -61,6 +71,39 @@ def validate_media_mime(detected_mime: str) -> None:
                 "Choose another supported media type."
             ),
         )
+
+
+def active_heavy_job_count(db: Session) -> int:
+    return db.scalar(
+        select(func.count())
+        .select_from(Upload)
+        .where(
+            Upload.media_type.in_(settings.HEAVY_MEDIA_TYPES),
+            Upload.status.in_(
+                [
+                    UploadStatus.QUEUED,
+                    UploadStatus.PROCESSING,
+                ]
+            ),
+        )
+    ) or 0
+
+
+def enforce_heavy_media_capacity(media_type: str, db: Session) -> None:
+    if media_type not in settings.HEAVY_MEDIA_TYPES:
+        return
+
+    active_jobs = active_heavy_job_count(db)
+    if active_jobs < settings.MAX_ACTIVE_HEAVY_JOBS:
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=(
+            "Heavy media analysis is currently busy. "
+            "Please try again shortly."
+        ),
+    )
 
 
 async def validating_file(uploadedFile : UploadFile) -> str:
@@ -174,6 +217,9 @@ async def create_upload(
                 "message":"File Already exists in the database."
             }
 
+        media_type = detected_mime.split("/", 1)[0]
+        enforce_heavy_media_capacity(media_type, db)
+
         file_path: Path | None = None
         try:
             file_path, storage_key = await store_file(uploadedFile, detected_mime)
@@ -227,19 +273,31 @@ async def create_upload(
             ) from exc
 
         try:
+            queue_name = processing_queue_for_media_type(uploaded_file.media_type)
             task = celery_app.send_task(
                 "process_upload",
                 args=[uploaded_file.id, processing_run.id],
-                queue="celery",
+                queue=queue_name,
                 ignore_result=True,
             )
+            queue_step = get_or_create_step(
+                processing_run.id,
+                "queue_assigned",
+                db,
+            )
+            if queue_step.status == StepStatus.RUNNING:
+                complete_step(queue_step, db)
+            elif queue_step.status != StepStatus.COMPLETED:
+                start_step(queue_step, db)
+                complete_step(queue_step, db)
             broker_url = urlparse(settings.CELERY_BROKER_URL)
             logger.info(
-                "Queued Celery task | upload_id=%s run_id=%s task_id=%s broker=%s queue=celery",
+                "Queued Celery task | upload_id=%s run_id=%s task_id=%s broker=%s queue=%s",
                 uploaded_file.id,
                 processing_run.id,
                 task.id,
                 broker_url.hostname,
+                queue_name,
             )
         except Exception as exc:
             logger.exception(

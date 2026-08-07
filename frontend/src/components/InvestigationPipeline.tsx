@@ -1,5 +1,6 @@
 import type { UploadSummary } from "../types/dashboard";
 import { getPrimaryResult } from "../utils/investigation";
+import { formatStepName } from "../utils/processingSteps";
 import { StatusBadge } from "./StatusBadge";
 
 type PipelineState = "completed" | "current" | "pending" | "failed";
@@ -42,7 +43,7 @@ export function InvestigationPipeline({ summary }: { summary: UploadSummary }) {
           return <div className={`investigation-pipeline__stage investigation-pipeline__stage--${state}`} key={stage}><span>{String(index + 1).padStart(2, "0")}</span><strong>{stage}</strong><small>{state === "completed" ? "Recorded" : state === "current" ? "In progress" : state === "failed" ? "Stopped" : "Pending"}</small></div>;
         })}
       </div>
-      {summary.processing_steps.length > 0 && <div className="investigation-pipeline__steps"><span>Recorded step</span>{summary.processing_steps.map((step) => <div key={step.id}><strong>{step.step_name}</strong><StatusBadge status={step.status} />{step.error_message && <p>{step.error_message}</p>}</div>)}</div>}
+      {summary.processing_steps.length > 0 && <div className="investigation-pipeline__steps"><span>Recorded step</span>{summary.processing_steps.map((step) => <div key={step.id}><strong>{formatStepName(step.step_name)}</strong><StatusBadge status={step.status} />{step.error_message && <p>{step.error_message}</p>}</div>)}</div>}
     </section>
   );
 }

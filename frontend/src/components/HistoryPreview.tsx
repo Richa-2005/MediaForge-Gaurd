@@ -1,5 +1,6 @@
 import type { UploadSummary } from "../types/dashboard";
-import { getPrimaryResult, isInvestigationFinished } from "../utils/investigation";
+import { getPrimaryResult } from "../utils/investigation";
+import { investigationActionLabel, investigationDestination } from "../utils/processingSteps";
 import { StatusBadge } from "./StatusBadge";
 import { StateIllustration } from "./StateIllustration";
 
@@ -9,9 +10,8 @@ export function HistoryPreview({ summary, loading, error }: { summary: UploadSum
   if (!summary) return <aside className="history-preview history-preview--message"><StateIllustration kind="archive" /><p>Select a returned submission to inspect its available summary.</p></aside>;
 
   const result = getPrimaryResult(summary);
-  const isFinished = isInvestigationFinished(summary);
-  const destination = isFinished && summary.upload.status === "completed" ? `/results?uploadId=${summary.upload.id}` : `/progress?uploadId=${summary.upload.id}`;
-  const destinationLabel = isFinished && summary.upload.status === "completed" ? "Open results" : "Follow progress";
+  const destination = investigationDestination(summary);
+  const destinationLabel = investigationActionLabel(summary);
 
   return (
     <aside className="history-preview" aria-labelledby="history-preview-title">

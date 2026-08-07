@@ -1,0 +1,48 @@
+# ==========================================================
+# MediaForge Vision
+# Model Configuration
+# ==========================================================
+
+model:
+
+  name: "MediaForgeVision"
+
+  version: "1.0"
+
+backbone:
+
+  architecture: "convnextv2_tiny"
+
+  pretrained: true
+
+  freeze_backbone: false
+
+heads:
+
+  authenticity:
+
+    classes: 4
+
+    weight: 1.0
+
+  origin:
+
+    classes: 4
+
+    weight: 0.6
+
+  technique:
+
+    classes: 10
+
+    weight: 0.5
+
+dropout:
+
+  classifier: 0.2
+
+export:
+
+  format: "torchscript"
+
+  optimize: true

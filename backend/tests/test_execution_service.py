@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 from app.models.analysis_result import AgentName
+from app.models.processing_step import StepStatus
 from app.models.processing_run import RunStatus
 from app.models.upload import UploadStatus
 from app.services import execution_service
@@ -11,6 +12,18 @@ from app.services import execution_service
 def test_complete_processing_uses_supervisor_as_primary(monkeypatch):
     report = Mock()
     monkeypatch.setattr(execution_service, "generate_upload_report", report)
+    monkeypatch.setattr(
+        execution_service,
+        "get_or_create_step",
+        Mock(
+            return_value=SimpleNamespace(
+                status=StepStatus.PENDING,
+                started_at=None,
+                completed_at=None,
+                duration_ms=None,
+            )
+        ),
+    )
     specialist = SimpleNamespace(
         id=10,
         agent=AgentName.TEXT,
@@ -47,6 +60,18 @@ def test_complete_processing_uses_supervisor_as_primary(monkeypatch):
 def test_complete_processing_falls_back_to_highest_risk(monkeypatch):
     report = Mock()
     monkeypatch.setattr(execution_service, "generate_upload_report", report)
+    monkeypatch.setattr(
+        execution_service,
+        "get_or_create_step",
+        Mock(
+            return_value=SimpleNamespace(
+                status=StepStatus.PENDING,
+                started_at=None,
+                completed_at=None,
+                duration_ms=None,
+            )
+        ),
+    )
     results = [
         SimpleNamespace(id=1, agent=AgentName.TEXT, risk_score=0.2),
         SimpleNamespace(id=2, agent=AgentName.FACTCHECK, risk_score=0.8),

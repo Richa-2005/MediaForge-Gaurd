@@ -26,4 +26,4 @@ WORKDIR /app/backend
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "celery -A app.core.celery_app.celery_app worker --loglevel=info --concurrency=1 & uvicorn app.main:app --host :: --port ${PORT:-8000}"]
+CMD ["sh", "-c", "celery -A app.core.celery_app.celery_app worker --loglevel=info --concurrency=1 -Q image_queue,text_queue,video_queue,audio_queue,celery & uvicorn app.main:app --host :: --port ${PORT:-8000}"]

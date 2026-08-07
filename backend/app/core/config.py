@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     UPLOAD_DIR: Path = BACKEND_ROOT / "storage" / "uploads"
     MAX_UPLOAD_SIZE_BYTES : int = 50 * 1024 * 1024
     URL_DOWNLOAD_TIMEOUT_SECONDS: float = 15.0
+    URL_SOCIAL_DOWNLOAD_TIMEOUT_SECONDS: float = 30.0
+    URL_SOCIAL_METADATA_MAX_BYTES: int = 1024 * 1024
     URL_MAX_REDIRECTS: int = 5
     ALLOWED_MIME_TYPES : set[str] = {
         "image/jpg",
@@ -29,7 +31,15 @@ class Settings(BaseSettings):
         "audio/x-wav",
         "text/plain"
     }
+    MEDIA_PROCESSING_QUEUES : dict = {
+        "image": "image_queue",
+        "text": "text_queue",
+        "video": "video_queue",
+        "audio": "audio_queue",
+    }
     DISABLED_MEDIA_TYPES: set[str] = set()
+    HEAVY_MEDIA_TYPES: set[str] = {"video", "audio"}
+    MAX_ACTIVE_HEAVY_JOBS: int = 1
 
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"

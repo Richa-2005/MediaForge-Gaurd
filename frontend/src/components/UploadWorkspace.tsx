@@ -1,12 +1,11 @@
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { getUploadStatus, submitFile, submitMediaUrl } from "../services/uploadService";
+import { submitFile, submitMediaUrl } from "../services/uploadService";
 import { getUploadSummary } from "../services/dashboardService";
 import type { UploadSummary } from "../types/dashboard";
 import type { UploadStatus } from "../types/upload";
 import { isInvestigationFinished } from "../utils/investigation";
 import { Icon } from "./Icon";
 import { MediaPassportIllustration } from "./MediaPassportIllustration";
-import { UploadPipelinePreview } from "./UploadPipelinePreview";
 
 type IntakeState = "idle" | "uploading" | "accepted" | "invalid" | "started" | "error";
 
@@ -43,6 +42,30 @@ function validateFile(file: File) {
   if (!extension || !supportedExtensions.includes(extension)) return `This file type is not supported in this deployment. Choose ${supportedDescription || "a supported file"}.`;
   if (file.size > maxBytes) return `This file exceeds the ${formatBytes(maxBytes)} submission limit.`;
   return null;
+}
+
+function submissionErrorMessage(error: unknown) {
+  const fallback = "The media could not be submitted.";
+  const message = error instanceof Error ? error.message : fallback;
+  const unsupportedPlatform = message.match(/^(Instagram|X|Tiktok|Facebook) URL ingestion is not available yet\./);
+
+  if (unsupportedPlatform) {
+    return `${unsupportedPlatform[1]} links are detected, but this platform is not supported yet. Use a direct media URL, YouTube link, or Reddit media post.`;
+  }
+
+  if (message.includes("Reddit URL did not contain a direct media item")) {
+    return "This Reddit link was detected, but no downloadable image or video was found. Try a Reddit media post or use a direct media URL.";
+  }
+
+  if (message.includes("YouTube URL ingestion requires yt-dlp")) {
+    return "YouTube links are detected, but this deployment is missing the downloader needed to import them.";
+  }
+
+  if (message.includes("Mock HTTP clients")) {
+    return "This URL source cannot be tested through the current browser session.";
+  }
+
+  return message;
 }
 
 export function UploadWorkspace() {
@@ -113,7 +136,7 @@ export function UploadWorkspace() {
         .catch(() => undefined);
     } catch (error) {
       setIntakeState("error");
-      setMessage(error instanceof Error ? error.message : "The media could not be submitted.");
+      setMessage(submissionErrorMessage(error));
     }
   };
 
@@ -206,12 +229,11 @@ export function UploadWorkspace() {
 
         <div className="upload-intake__divider"><span>or</span></div>
         <form className="url-intake" onSubmit={handleUrlSubmit}>
-          <label htmlFor="media-url">Submit a public media URL</label>
-          <div><input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/media" /><button className="quiet-button" type="submit" disabled={intakeState === "uploading"}>Analyze URL <Icon name="arrow" size={15} /></button></div>
+          <label htmlFor="media-url">Submit a direct media URL, YouTube link, or Reddit media post</label>
+          <div><input id="media-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/media.jpg, https://youtu.be/..., or Reddit media post" /><button className="quiet-button" type="submit" disabled={intakeState === "uploading"}>Analyze URL <Icon name="arrow" size={15} /></button></div>
+          <p className="url-intake__support">Supports direct image, text, audio, and video URLs, plus YouTube links and Reddit media posts. Instagram, X, TikTok, and Facebook are detected but not supported yet.</p>
         </form>
       </section>
-
-      <UploadPipelinePreview hasSelection={Boolean(selectedFile || url)} state={intakeState} uploadStatus={uploadStatus} />
     </div>
   );
 }

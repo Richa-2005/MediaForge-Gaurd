@@ -1,4 +1,6 @@
 from types import SimpleNamespace
+import sys
+import types
 
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
@@ -40,10 +42,12 @@ def test_run_analysis_is_atomic_and_idempotent(monkeypatch, tmp_path):
     Base.metadata.create_all(engine)
     text_path = tmp_path / "sample.txt"
     text_path.write_text("A sample claim.", encoding="utf-8")
-    monkeypatch.setattr(
-        analysis_service,
-        "AnalysisAgent",
-        TextAnalysisAgent,
+    fake_module = types.ModuleType("ai_workers.src.agents.analysis_agent")
+    fake_module.AnalysisAgent = TextAnalysisAgent
+    monkeypatch.setitem(
+        sys.modules,
+        "ai_workers.src.agents.analysis_agent",
+        fake_module,
     )
 
     with Session(engine) as db:
