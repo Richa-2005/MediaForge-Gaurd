@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     DISABLED_MEDIA_TYPES: set[str] = set()
     HEAVY_MEDIA_TYPES: set[str] = {"video", "audio"}
     MAX_ACTIVE_HEAVY_JOBS: int = 1
+    PROCESSING_TASK_SOFT_TIME_LIMIT_SECONDS: int = 15 * 60
+    PROCESSING_TASK_TIME_LIMIT_SECONDS: int = 20 * 60
 
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"

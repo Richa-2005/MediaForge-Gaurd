@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 import os
 
 import torch
@@ -8,6 +9,8 @@ from torchvision import transforms
 
 from src.processors.mediaforge_model import MediaForgeVision
 
+
+logger = logging.getLogger(__name__)
 
 CLASS_NAMES = {
     0: "authentic",
@@ -58,6 +61,11 @@ class MediaForgePredictor:
     def _load_model(self):
 
         model_path = resolve_weights_path()
+        logger.info(
+            "Loading MediaForge Vision weights | path=%s device=%s",
+            model_path,
+            self._device,
+        )
 
         model = MediaForgeVision()
 
@@ -73,6 +81,7 @@ class MediaForgePredictor:
         model.eval()
 
         MediaForgePredictor._model = model
+        logger.info("MediaForge Vision model loaded successfully")
 
     def predict(
         self,
@@ -113,6 +122,10 @@ def resolve_weights_path() -> Path:
     )
 
     if weights_path.exists():
+        logger.info(
+            "Using cached MediaForge Vision weights | path=%s",
+            weights_path,
+        )
         return weights_path
 
     return download_weights(weights_path)
@@ -142,6 +155,13 @@ def download_weights(weights_path: Path) -> Path:
     )
 
     try:
+        logger.info(
+            "Downloading MediaForge Vision weights from Hugging Face | "
+            "repo_id=%s filename=%s destination=%s",
+            repo_id,
+            filename,
+            weights_path,
+        )
         downloaded_path = hf_hub_download(
             repo_id=repo_id,
             filename=filename,
@@ -164,5 +184,11 @@ def download_weights(weights_path: Path) -> Path:
 
     if downloaded_path != weights_path and not weights_path.exists():
         downloaded_path.replace(weights_path)
+
+    logger.info(
+        "MediaForge Vision weights ready | path=%s size_bytes=%s",
+        weights_path,
+        weights_path.stat().st_size,
+    )
 
     return weights_path
