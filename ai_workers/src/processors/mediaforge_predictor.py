@@ -140,7 +140,12 @@ class MediaForgePredictor:
     def predict(
         self,
         image_path: Path,
-    ):
+    ):  
+        logger.info(
+            "Vision input file | path=%s sha256=%s",
+            image_path,
+            hashlib.sha256(image_path.read_bytes()).hexdigest(),
+        )
 
         image = (
             Image.open(image_path)
