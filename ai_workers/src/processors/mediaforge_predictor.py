@@ -3,7 +3,7 @@ from pathlib import Path
 import torch
 from PIL import Image
 from torchvision import transforms
-
+from huggingface_hub import hf_hub_download
 from src.processors.mediaforge_model import MediaForgeVision
 
 
@@ -44,12 +44,10 @@ class MediaForgePredictor:
 
     def _load_model(self):
 
-        from huggingface_hub import hf_hub_download
-
         weights_dir = (
             Path(__file__)
             .resolve()
-            .parents[1]
+            .parents[2]
             / "weights"
         )
 
@@ -59,19 +57,15 @@ class MediaForgePredictor:
 
         if not model_path.exists():
 
-            print(
-                "Downloading MediaForge Vision weights from Hugging Face..."
+            
+
+            model_path = Path(
+                hf_hub_download(
+                    repo_id="rashmijha06/mediaforge_vision",
+                    filename="mediaforge_vision_v1.pth",
+                    local_dir=weights_dir,
+                )
             )
-
-            downloaded_path = hf_hub_download(
-                repo_id="rashmijha06/mediaforge_vision",
-                filename="mediaforge_vision_v1.pth",
-                local_dir=weights_dir,
-            )
-
-            model_path = Path(downloaded_path)
-
-        print(f"Loading MediaForge Vision weights from {model_path}")
 
         weights = torch.load(
             model_path,
@@ -86,6 +80,8 @@ class MediaForgePredictor:
             weights,
             assign=True,
         )
+
+        del weights
 
         model.to(self._device)
 
