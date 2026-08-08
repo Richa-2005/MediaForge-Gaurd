@@ -1,7 +1,11 @@
 from pathlib import Path
+import hashlib
 import logging
 
 import torch
+import torchvision
+import timm
+
 from PIL import Image
 from torchvision import transforms
 from huggingface_hub import hf_hub_download
@@ -11,6 +15,12 @@ from src.processors.mediaforge_model import MediaForgeVision
 
 logger = logging.getLogger(__name__)
 
+logger.info(
+    "Vision environment | torch=%s torchvision=%s timm=%s",
+    torch.__version__,
+    torchvision.__version__,
+    timm.__version__,
+)
 
 CLASS_NAMES = {
     0: "authentic",
@@ -86,6 +96,14 @@ class MediaForgePredictor:
             model_path,
         )
 
+        with open(model_path, "rb") as f:
+            sha256 = hashlib.sha256(f.read()).hexdigest()
+
+        logger.info(
+            "MediaForge Vision weights | sha256=%s",
+            sha256,
+        )
+
         weights = torch.load(
             model_path,
             map_location="cpu",
@@ -109,6 +127,12 @@ class MediaForgePredictor:
         MediaForgePredictor._model = model
 
         logger.info(
+            "Vision model | model=%s device=%s",
+            self._model.__class__.__name__,
+            self._device,
+        )
+
+        logger.info(
             "MediaForge Vision model loaded successfully | device=%s",
             self._device,
         )
@@ -124,6 +148,17 @@ class MediaForgePredictor:
         )
 
         image = self._transform(image)
+
+        logger.info(
+            "Vision input | image=%s tensor_shape=%s dtype=%s "
+            "min=%.5f max=%.5f mean=%.5f std=%.5f",
+            image_path,
+            tuple(image.shape),
+            image.dtype,
+            image.min().item(),
+            image.max().item(),
+            image.mean().item(),
+        )
 
         image = (
             image
