@@ -96,8 +96,13 @@ class MediaForgePredictor:
             model_path,
         )
 
+        sha256_hash = hashlib.sha256()
+
         with open(model_path, "rb") as f:
-            sha256 = hashlib.sha256(f.read()).hexdigest()
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                sha256_hash.update(chunk)
+
+        sha256 = sha256_hash.hexdigest()
 
         logger.info(
             "MediaForge Vision weights | sha256=%s",
@@ -111,7 +116,8 @@ class MediaForgePredictor:
             mmap=True,
         )
 
-        model = MediaForgeVision()
+        with torch.device("meta"):
+            model = MediaForgeVision()
 
         model.load_state_dict(
             weights,
@@ -119,6 +125,9 @@ class MediaForgePredictor:
         )
 
         del weights
+
+        if self._device.type != "cpu":
+            model = model.to(self._device)
 
         model.to(self._device)
 
