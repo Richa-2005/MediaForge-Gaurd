@@ -1,7 +1,7 @@
 from pathlib import Path
 import hashlib
 import logging
-
+import time
 import torch
 import torchvision
 import timm
@@ -141,6 +141,7 @@ class MediaForgePredictor:
         self,
         image_path: Path,
     ):  
+        start = time.perf_counter()
         logger.info(
             "Vision input file | path=%s sha256=%s",
             image_path,
@@ -163,6 +164,7 @@ class MediaForgePredictor:
             image.min().item(),
             image.max().item(),
             image.mean().item(),
+            image.std().item()
         )
 
         image = (
@@ -171,9 +173,17 @@ class MediaForgePredictor:
             .to(self._device)
         )
 
+
+        inference_start = time.perf_counter()
+
         with torch.no_grad():
 
             logits = self._model(image)
+
+            logger.info(
+                "MediaForge Vision logits | values=%s",
+                logits.squeeze().cpu().tolist(),
+            )
 
             probs = torch.softmax(
                 logits,
@@ -183,6 +193,18 @@ class MediaForgePredictor:
             confidence, prediction = (
                 probs.max(dim=1)
             )
+        inference_duration = (
+            time.perf_counter() - inference_start
+        )
+
+        logger.info(
+            "Vision inference completed | "
+            "duration=%.3fs logits=%s",
+            inference_duration,
+            logits.detach().cpu().tolist(),
+        )
+
+        
 
         result = {
             "label": CLASS_NAMES[
@@ -199,6 +221,8 @@ class MediaForgePredictor:
             ),
         }
 
+        
+
         logger.info(
             "MediaForge Vision prediction | "
             "image=%s label=%s confidence=%.4f "
@@ -207,6 +231,7 @@ class MediaForgePredictor:
             result["label"],
             result["confidence"],
             result["probabilities"],
+            time.perf_counter() - start,
         )
 
         return result
