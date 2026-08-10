@@ -1,7 +1,13 @@
 from pathlib import Path
 import hashlib
 import logging
+import os
 import time
+
+# Avoid Hugging Face's Xet-backed download path on small containers unless a
+# deployment explicitly opts back in.
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+
 import torch
 import torchvision
 import timm
@@ -26,6 +32,16 @@ CLASS_NAMES = {
     0: "authentic",
     1: "manipulated",
 }
+
+DEFAULT_REPO_ID = "rashmijha06/mediaforge_vision"
+DEFAULT_FILENAME = "mediaforge_vision_v1.pth"
+DEFAULT_WEIGHTS_PATH = (
+    Path(__file__).resolve().parents[2] / "weights" / DEFAULT_FILENAME
+)
+
+
+class MediaForgeWeightsError(RuntimeError):
+    """Raised when MediaForge Vision weights cannot be loaded."""
 
 
 class MediaForgePredictor:
@@ -52,44 +68,7 @@ class MediaForgePredictor:
 
     def _load_model(self):
 
-        weights_dir = (
-            Path(__file__)
-            .resolve()
-            .parents[2]
-            / "weights"
-        )
-
-        weights_dir.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        model_path = (
-            weights_dir
-            / "mediaforge_vision_v1.pth"
-        )
-
-        if not model_path.exists():
-
-            logger.info(
-                "MediaForge Vision weights not found locally | "
-                "downloading from Hugging Face"
-            )
-
-            model_path = Path(
-                hf_hub_download(
-                    repo_id="rashmijha06/mediaforge_vision",
-                    filename="mediaforge_vision_v1.pth",
-                    local_dir=weights_dir,
-                )
-            )
-
-        else:
-
-            logger.info(
-                "MediaForge Vision weights found locally | path=%s",
-                model_path,
-            )
+        model_path = resolve_weights_path()
 
         logger.info(
             "Loading MediaForge Vision weights | path=%s",
@@ -226,7 +205,7 @@ class MediaForgePredictor:
         logger.info(
             "MediaForge Vision prediction | "
             "image=%s label=%s confidence=%.4f "
-            "probabilities=%s",
+            "probabilities=%s duration=%.3fs",
             image_path,
             result["label"],
             result["confidence"],
@@ -235,3 +214,64 @@ class MediaForgePredictor:
         )
 
         return result
+
+
+def resolve_weights_path() -> Path:
+    weights_path = Path(
+        os.getenv(
+            "MEDIAFORGE_VISION_WEIGHTS_PATH",
+            str(DEFAULT_WEIGHTS_PATH),
+        )
+    )
+
+    if weights_path.exists():
+        logger.info(
+            "MediaForge Vision weights found locally | path=%s",
+            weights_path,
+        )
+        return weights_path
+
+    return download_weights(weights_path)
+
+
+def download_weights(weights_path: Path) -> Path:
+    repo_id = os.getenv("MEDIAFORGE_VISION_REPO_ID", DEFAULT_REPO_ID)
+    filename = os.getenv("MEDIAFORGE_VISION_FILENAME", DEFAULT_FILENAME)
+    token = os.getenv("HF_TOKEN")
+
+    if not token:
+        raise MediaForgeWeightsError(
+            "HF_TOKEN is required to download private MediaForge Vision "
+            "weights from Hugging Face."
+        )
+
+    weights_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    logger.info(
+        "MediaForge Vision weights not found locally | "
+        "downloading from Hugging Face repo=%s filename=%s",
+        repo_id,
+        filename,
+    )
+
+    try:
+        downloaded_path = Path(
+            hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                token=token,
+                local_dir=weights_path.parent,
+            )
+        )
+    except Exception as exc:
+        raise MediaForgeWeightsError(
+            "Failed to download MediaForge Vision weights from Hugging Face."
+        ) from exc
+
+    if downloaded_path != weights_path and not weights_path.exists():
+        downloaded_path.replace(weights_path)
+
+    return weights_path
