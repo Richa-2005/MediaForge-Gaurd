@@ -43,6 +43,17 @@ MIME_EXTENSIONS = {
     "text/plain": ".txt",
 }
 
+EXTENSION_MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".mp4": "video/mp4",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/x-wav",
+    ".txt": "text/plain",
+}
+
 
 def processing_queue_for_media_type(media_type: str) -> str:
     return settings.MEDIA_PROCESSING_QUEUES.get(media_type, "celery")
@@ -52,7 +63,23 @@ def detect_media_mime(header_bytes: bytes) -> str:
     return magic.from_buffer(header_bytes, mime=True)
 
 
-def validate_media_mime(detected_mime: str) -> None:
+def normalize_detected_mime(
+    detected_mime: str,
+    filename: str | None = None,
+) -> str:
+    if detected_mime != "application/octet-stream" or not filename:
+        return detected_mime
+
+    extension = Path(filename).suffix.lower()
+    return EXTENSION_MIME_TYPES.get(extension, detected_mime)
+
+
+def validate_media_mime(
+    detected_mime: str,
+    filename: str | None = None,
+) -> str:
+    detected_mime = normalize_detected_mime(detected_mime, filename)
+
     if detected_mime not in settings.ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -71,6 +98,8 @@ def validate_media_mime(detected_mime: str) -> None:
                 "Choose another supported media type."
             ),
         )
+
+    return detected_mime
 
 
 def active_heavy_job_count(db: Session) -> int:
@@ -123,8 +152,10 @@ async def validating_file(uploadedFile : UploadFile) -> str:
     header_bytes = await uploadedFile.read(2048)
     await uploadedFile.seek(0) 
 
-    detected_mime = detect_media_mime(header_bytes)
-    validate_media_mime(detected_mime)
+    detected_mime = validate_media_mime(
+        detect_media_mime(header_bytes),
+        uploadedFile.filename,
+    )
     
     return detected_mime
     
