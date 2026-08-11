@@ -6,6 +6,7 @@ import pytest
 from src.clients.vision_inference_client import (
     RemoteVisionInferenceClient,
     VisionInferenceClientError,
+    validate_endpoint_url,
     validate_prediction,
 )
 from src.pipelines.vision_pipeline import build_vision_predictor
@@ -55,6 +56,19 @@ def test_remote_vision_client_requires_endpoint(monkeypatch):
 
     with pytest.raises(VisionInferenceClientError, match="MODAL_VISION_ENDPOINT_URL"):
         RemoteVisionInferenceClient()
+
+
+def test_remote_vision_client_rejects_modal_dashboard_url():
+    with pytest.raises(VisionInferenceClientError, match="dashboard URL"):
+        validate_endpoint_url(
+            "https://modal.com/apps/richamgupta2005/main/deployed/"
+            "mediaforge-vision/predict"
+        )
+
+
+def test_remote_vision_client_requires_predict_endpoint():
+    with pytest.raises(VisionInferenceClientError, match="/predict"):
+        validate_endpoint_url("https://example.modal.run")
 
 
 def test_validate_prediction_rejects_missing_fields():
