@@ -72,3 +72,27 @@ Railway worker
   -> Modal runs MediaForge Vision on GPU
   -> Railway stores the returned label/confidence/probabilities
 ```
+
+# MediaForge Audio Modal Service
+
+This service moves Whisper transcription off Railway.
+
+## Deploy
+
+The audio service reuses `MODAL_API_TOKEN` from the same
+`mediaforge-vision-secrets` secret. Optionally add `WHISPER_MODEL_SIZE=base`
+to that secret.
+
+```bash
+modal deploy modal/modal_audio_service.py
+```
+
+Copy the deployed `/transcribe` URL into Railway:
+
+```text
+AUDIO_INFERENCE_PROVIDER=modal
+MODAL_AUDIO_ENDPOINT_URL=https://...modal.run/transcribe
+MODAL_API_TOKEN=replace-with-random-token
+```
+
+Do not use a Modal dashboard URL beginning with `https://modal.com/apps/`.
