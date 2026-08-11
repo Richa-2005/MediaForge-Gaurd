@@ -83,6 +83,14 @@ def make_video_upload(filename="sample.mp4"):
     )
 
 
+def make_audio_upload(filename="sample.mp3"):
+    return UploadFile(
+        file=BytesIO(b"fake audio bytes"),
+        size=len(b"fake audio bytes"),
+        filename=filename,
+    )
+
+
 def add_upload(
     db,
     *,
@@ -223,6 +231,56 @@ def test_completed_and_failed_heavy_uploads_do_not_count(db, users):
     )
 
     assert upload_service.active_heavy_job_count(db) == 0
+
+
+@pytest.mark.anyio
+async def test_octet_stream_mp3_uses_extension_fallback(
+    db,
+    users,
+    monkeypatch,
+    upload_environment,
+):
+    user, _ = users
+    monkeypatch.setattr(
+        upload_service,
+        "detect_media_mime",
+        lambda _header: "application/octet-stream",
+    )
+    monkeypatch.setattr(upload_service.settings, "MAX_ACTIVE_HEAVY_JOBS", 1)
+
+    result = await upload_service.create_upload(
+        make_audio_upload(),
+        db,
+        user,
+    )
+
+    upload = db.get(Upload, result["upload_id"])
+    assert upload.mime_type == "audio/mpeg"
+    assert upload.media_type == "audio"
+    assert upload_environment.call_count == 1
+
+
+@pytest.mark.anyio
+async def test_unknown_octet_stream_file_is_rejected(
+    db,
+    users,
+    monkeypatch,
+):
+    user, _ = users
+    monkeypatch.setattr(
+        upload_service,
+        "detect_media_mime",
+        lambda _header: "application/octet-stream",
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await upload_service.create_upload(
+            make_audio_upload("sample.bin"),
+            db,
+            user,
+        )
+
+    assert exc.value.status_code == 415
 
 
 def test_stale_processing_upload_is_recovered_before_capacity_count(
