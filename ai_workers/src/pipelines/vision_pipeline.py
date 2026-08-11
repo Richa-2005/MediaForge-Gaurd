@@ -6,9 +6,9 @@ from src.forensics.fft import FFTAnalyzer
 from src.forensics.noise import NoiseAnalyzer
 from src.processors.face_processor import process_faces
 from src.schemas.evidence import Evidence
-from src.processors.mediaforge_predictor import MediaForgePredictor
 
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class VisionPipeline:
     """
 
     def __init__(self):
-        self.predictor = MediaForgePredictor()
+        self.predictor = build_vision_predictor()
          
         self.analyzers = [
             ELAAnalyzer(),
@@ -92,6 +92,33 @@ class VisionPipeline:
                     )
 
         return (prediction, evidence, face_results)
+
+    def predict(
+        self,
+        image_path: Path,
+    ) -> dict:
+        return self.predictor.predict(image_path)
+
+
+def build_vision_predictor():
+    provider = os.getenv("VISION_INFERENCE_PROVIDER", "local").strip().lower()
+
+    if provider == "modal":
+        from src.clients.vision_inference_client import RemoteVisionInferenceClient
+
+        logger.info("Using remote Modal vision inference provider")
+        return RemoteVisionInferenceClient()
+
+    if provider != "local":
+        raise ValueError(
+            "Unsupported VISION_INFERENCE_PROVIDER: "
+            f"{provider}. Expected 'local' or 'modal'."
+        )
+
+    from src.processors.mediaforge_predictor import MediaForgePredictor
+
+    logger.info("Using local MediaForge vision inference provider")
+    return MediaForgePredictor()
 
 
 if __name__ == "__main__":
