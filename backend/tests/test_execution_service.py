@@ -89,3 +89,37 @@ def test_complete_processing_falls_back_to_highest_risk(monkeypatch):
     execution_service.complete_processing(results, upload, running, db)
 
     assert report.call_args.kwargs["primary_analysis_id"] == 2
+
+
+def test_fail_processing_marks_upload_and_run_failed():
+    upload = SimpleNamespace(id=7, status=UploadStatus.PROCESSING)
+    running = SimpleNamespace(
+        id=5,
+        status=RunStatus.RUNNING,
+        started_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        completed_at=None,
+        duration_ms=None,
+    )
+    step = SimpleNamespace(
+        status=StepStatus.RUNNING,
+        started_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        completed_at=None,
+        duration_ms=None,
+        error_message=None,
+    )
+    db = Mock()
+    db.get.return_value = upload
+
+    execution_service.fail_processing(
+        upload.id,
+        running,
+        step,
+        RuntimeError("worker failed"),
+        db,
+    )
+
+    assert upload.status == UploadStatus.FAILED
+    assert running.status == RunStatus.FAILED
+    assert step.status == StepStatus.FAILED
+    assert step.error_message == "worker failed"
+    db.commit.assert_called()
