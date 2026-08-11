@@ -93,6 +93,12 @@ class VisionPipeline:
 
         return (prediction, evidence, face_results)
 
+    def predict(
+        self,
+        image_path: Path,
+    ) -> dict:
+        return self.predictor.predict(image_path)
+
 
 def build_vision_predictor():
     provider = os.getenv("VISION_INFERENCE_PROVIDER", "local").strip().lower()

@@ -291,12 +291,11 @@ def run_video_analysis(
                     frame_path,
                 )
                 continue
-            result_output = analysis_agent.analyze(
-                upload_id=upload.id,
-                media_path=frame_path,
-                media_type="image",
+            frame_result = analyze_video_frame(
+                analysis_agent,
+                upload.id,
+                frame_path,
             )
-            frame_result = result_output.get("vision")
             if frame_result is not None:
                 frame_results.append(
                     (frame_artifact, frame_result)
@@ -355,6 +354,28 @@ def run_video_analysis(
         )
 
         return [extracted_analysis]
+
+
+def analyze_video_frame(
+    analysis_agent,
+    upload_id: int,
+    frame_path: Path,
+):
+    from src.agents.vision_agent import VisionAgent
+
+    analysis_agent.vision_agent = analysis_agent.vision_agent or VisionAgent()
+    if hasattr(analysis_agent.vision_agent, "analyze_frame"):
+        return analysis_agent.vision_agent.analyze_frame(
+            frame_path,
+            upload_id=upload_id,
+        )
+
+    result_output = analysis_agent.analyze(
+        upload_id=upload_id,
+        media_path=frame_path,
+        media_type="image",
+    )
+    return result_output.get("vision")
 
 
 def dispatch_single_agent(

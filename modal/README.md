@@ -27,7 +27,7 @@ modal secret create mediaforge-vision-secrets \
 ## 3. Test temporarily
 
 ```bash
-modal serve modal/vision_service.py
+modal serve modal/modal_vision_service.py
 ```
 
 Modal prints a temporary public URL. The prediction endpoint is:
@@ -39,7 +39,7 @@ https://...modal.run/predict
 ## 4. Deploy permanently
 
 ```bash
-modal deploy modal/vision_service.py
+modal deploy modal/modal_vision_service.py
 ```
 
 Copy the deployed `/predict` URL into Railway:

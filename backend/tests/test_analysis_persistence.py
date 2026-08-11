@@ -39,19 +39,27 @@ class TextAnalysisAgent:
 
 
 class FrameAnalysisAgent:
-    def analyze(self, *, upload_id, media_path, media_type):
+    def __init__(self):
+        self.vision_agent = self
+        self.analyze_calls = 0
+        self.frame_calls = 0
+
+    def analyze_frame(self, media_path, *, upload_id):
+        self.frame_calls += 1
         risk_by_name = {
             "frame_0000.jpg": 0.2,
             "frame_0001.jpg": 0.9,
         }
         risk = risk_by_name[media_path.name]
-        return {
-            "vision": worker_result(
-                "vision",
-                risk,
-                risk,
-            )
-        }
+        return worker_result(
+            "vision",
+            risk,
+            risk,
+        )
+
+    def analyze(self, *, upload_id, media_path, media_type):
+        self.analyze_calls += 1
+        raise AssertionError("Video frames should use analyze_frame")
 
 
 def test_run_analysis_is_atomic_and_idempotent(monkeypatch, tmp_path):
@@ -123,10 +131,12 @@ def test_run_video_analysis_aggregates_frame_predictions(tmp_path):
         ),
     ]
 
+    agent = FrameAnalysisAgent()
+
     results = analysis_service.run_video_analysis(
         upload,
         artifacts,
-        FrameAnalysisAgent(),
+        agent,
     )
 
     assert len(results) == 1
@@ -136,3 +146,5 @@ def test_run_video_analysis_aggregates_frame_predictions(tmp_path):
     assert result["details"]["total_frames"] == 2
     assert result["details"]["analyzed_frames"] == 2
     assert result["details"]["highest_risk_artifact_id"] == 2
+    assert agent.frame_calls == 2
+    assert agent.analyze_calls == 0

@@ -51,6 +51,42 @@ class VisionAgent:
             },
         )
 
+    def analyze_frame(
+        self,
+        image_path: Path,
+        upload_id: int,
+    ) -> AgentResult:
+        """
+        Lightweight video-frame analysis.
+
+        Video already samples multiple frames, so running face detection and
+        forensic artifact generation on every frame creates avoidable Railway
+        CPU/RAM pressure. Keep frame scoring to the configured predictor,
+        which can be Modal-backed in production.
+        """
+
+        prediction = self.pipeline.predict(image_path)
+        analysis = self.decision_engine.evaluate(
+            prediction,
+            [],
+        )
+
+        return AgentResult(
+            upload_id=upload_id,
+            agent="vision",
+            analysis=analysis,
+            details={
+                "model": {
+                    "name": "MediaForge Vision",
+                    "version": "v1",
+                    "prediction": prediction["label"],
+                    "confidence": prediction["confidence"],
+                    "probabilities": prediction["probabilities"],
+                },
+                "frame_only": True,
+            },
+        )
+
 
 if __name__ == "__main__":
 
