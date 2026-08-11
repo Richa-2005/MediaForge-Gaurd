@@ -1,11 +1,11 @@
 from pathlib import Path
 import os
+from urllib.parse import urlparse
 
 import httpx
 
 
-class VisionInferenceClientError(RuntimeError):
-    """Raised when the remote vision inference service cannot return a result."""
+VisionInferenceClientError = RuntimeError
 
 
 class RemoteVisionInferenceClient:
@@ -26,6 +26,7 @@ class RemoteVisionInferenceClient:
                 "MODAL_VISION_ENDPOINT_URL is required when "
                 "VISION_INFERENCE_PROVIDER=modal."
             )
+        validate_endpoint_url(self.endpoint_url)
 
     def predict(self, image_path: Path) -> dict:
         headers = {}
@@ -100,3 +101,24 @@ def validate_prediction(payload: dict) -> dict:
             },
         ),
     }
+
+
+def validate_endpoint_url(endpoint_url: str) -> None:
+    parsed = urlparse(endpoint_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise VisionInferenceClientError(
+            "MODAL_VISION_ENDPOINT_URL must be a full deployed Modal web "
+            "endpoint URL."
+        )
+
+    if parsed.netloc == "modal.com" or parsed.netloc.endswith(".modal.com"):
+        raise VisionInferenceClientError(
+            "MODAL_VISION_ENDPOINT_URL is set to a Modal dashboard URL. Use "
+            "the deployed Modal web endpoint ending in .modal.run/predict."
+        )
+
+    if not endpoint_url.rstrip("/").endswith("/predict"):
+        raise VisionInferenceClientError(
+            "MODAL_VISION_ENDPOINT_URL should be the deployed prediction "
+            "endpoint ending in /predict."
+        )

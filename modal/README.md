@@ -50,6 +50,19 @@ MODAL_VISION_ENDPOINT_URL=https://...modal.run/predict
 MODAL_API_TOKEN=replace-with-random-token
 ```
 
+Do not use the Modal dashboard URL. This is wrong and will return `403`:
+
+```text
+https://modal.com/apps/.../deployed/mediaforge-vision/predict
+```
+
+Use the deployed web endpoint printed by `modal deploy`/shown under Modal
+Endpoints. It should look like:
+
+```text
+https://<workspace>--mediaforge-vision-vision-api.modal.run/predict
+```
+
 ## 5. Expected Runtime Flow
 
 ```text
