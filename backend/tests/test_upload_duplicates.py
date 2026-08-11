@@ -1,5 +1,6 @@
 from io import BytesIO
 import ipaddress
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 
 import httpx
@@ -11,6 +12,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.base import Base
+from app.models.processing_run import ProcessingRun, RunStatus
+from app.models.processing_step import ProcessingStep, StepStatus
 from app.models.upload import Upload, UploadStatus
 from app.models.user import User
 from app.services import upload_service
@@ -80,6 +83,54 @@ def make_video_upload(filename="sample.mp4"):
     )
 
 
+def add_upload(
+    db,
+    *,
+    user,
+    media_type="video",
+    status=UploadStatus.QUEUED,
+    sha="b",
+    started_at=None,
+    run_status=RunStatus.RUNNING,
+    step_status=None,
+):
+    upload = Upload(
+        user_id=user.id,
+        original_filename=f"{sha}.{media_type}",
+        stored_filename=f"{sha}.{media_type}",
+        file_path=f"/tmp/{sha}.{media_type}",
+        media_type=media_type,
+        mime_type=f"{media_type}/mp4" if media_type == "video" else "audio/mpeg",
+        file_size=10,
+        sha256_hash=sha * 64,
+        status=status,
+    )
+    db.add(upload)
+    db.commit()
+    db.refresh(upload)
+
+    if started_at is not None:
+        run = ProcessingRun(
+            upload_id=upload.id,
+            status=run_status,
+            started_at=started_at,
+        )
+        db.add(run)
+        db.commit()
+        db.refresh(run)
+        if step_status is not None:
+            db.add(
+                ProcessingStep(
+                    processing_run_id=run.id,
+                    step_name="analysis",
+                    status=step_status,
+                    started_at=started_at,
+                )
+            )
+            db.commit()
+    return upload
+
+
 async def create_text_upload(db, user, filename="sample.txt"):
     return await upload_service.create_upload(
         make_upload(filename),
@@ -132,20 +183,12 @@ async def test_heavy_media_capacity_rejects_when_busy(
     upload_environment,
 ):
     user, _ = users
-    db.add(
-        Upload(
-            user_id=user.id,
-            original_filename="busy.mp4",
-            stored_filename="busy.mp4",
-            file_path="/tmp/busy.mp4",
-            media_type="video",
-            mime_type="video/mp4",
-            file_size=10,
-            sha256_hash="b" * 64,
-            status=UploadStatus.QUEUED,
-        )
+    add_upload(
+        db,
+        user=user,
+        status=UploadStatus.QUEUED,
+        sha="b",
     )
-    db.commit()
     monkeypatch.setattr(
         upload_service,
         "detect_media_mime",
@@ -162,6 +205,75 @@ async def test_heavy_media_capacity_rejects_when_busy(
 
     assert exc.value.status_code == 429
     assert upload_environment.call_count == 0
+
+
+def test_completed_and_failed_heavy_uploads_do_not_count(db, users):
+    user, _ = users
+    add_upload(
+        db,
+        user=user,
+        status=UploadStatus.COMPLETED,
+        sha="c",
+    )
+    add_upload(
+        db,
+        user=user,
+        status=UploadStatus.FAILED,
+        sha="d",
+    )
+
+    assert upload_service.active_heavy_job_count(db) == 0
+
+
+def test_stale_processing_upload_is_recovered_before_capacity_count(
+    db,
+    users,
+    monkeypatch,
+):
+    user, _ = users
+    stale_upload = add_upload(
+        db,
+        user=user,
+        status=UploadStatus.PROCESSING,
+        sha="e",
+        started_at=datetime.now(timezone.utc) - timedelta(hours=2),
+        step_status=StepStatus.RUNNING,
+    )
+    monkeypatch.setattr(
+        upload_service.settings,
+        "PROCESSING_STALE_AFTER_SECONDS",
+        60,
+    )
+
+    assert upload_service.active_heavy_job_count(db) == 0
+    db.refresh(stale_upload)
+    assert stale_upload.status == UploadStatus.FAILED
+    run = db.scalar(
+        select(ProcessingRun).where(ProcessingRun.upload_id == stale_upload.id)
+    )
+    assert run.status == RunStatus.FAILED
+    step = db.scalar(
+        select(ProcessingStep).where(ProcessingStep.processing_run_id == run.id)
+    )
+    assert step.status == StepStatus.FAILED
+
+
+def test_fresh_processing_upload_still_counts(db, users, monkeypatch):
+    user, _ = users
+    add_upload(
+        db,
+        user=user,
+        status=UploadStatus.PROCESSING,
+        sha="f",
+        started_at=datetime.now(timezone.utc),
+    )
+    monkeypatch.setattr(
+        upload_service.settings,
+        "PROCESSING_STALE_AFTER_SECONDS",
+        60,
+    )
+
+    assert upload_service.active_heavy_job_count(db) == 1
 
 
 @pytest.mark.anyio

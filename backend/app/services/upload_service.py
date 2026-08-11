@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.models.upload import Upload, UploadStatus
 from app.models.processing_run import ProcessingRun, RunStatus, RunTrigger
-from app.models.processing_step import StepStatus
+from app.models.processing_step import ProcessingStep, StepStatus
 from app.models.user import User
 from app.core.celery_app import celery_app
 from app.services.storage_service import (
@@ -74,6 +74,8 @@ def validate_media_mime(detected_mime: str) -> None:
 
 
 def active_heavy_job_count(db: Session) -> int:
+    recover_stale_processing_uploads(db)
+
     return db.scalar(
         select(func.count())
         .select_from(Upload)
@@ -93,6 +95,7 @@ def enforce_heavy_media_capacity(media_type: str, db: Session) -> None:
     if media_type not in settings.HEAVY_MEDIA_TYPES:
         return
 
+    recover_stale_processing_uploads(db)
     active_jobs = active_heavy_job_count(db)
     if active_jobs < settings.MAX_ACTIVE_HEAVY_JOBS:
         return
@@ -341,5 +344,99 @@ def get_upload_status(
     if user is not None:
         query = query.where(Upload.user_id == user.id)
     response = db.scalar(query)
+    recover_stale_processing_uploads(db, upload_id=upload_id)
+    if response is not None:
+        db.refresh(response)
 
     return response
+
+
+def recover_stale_processing_uploads(
+    db: Session,
+    *,
+    upload_id: int | None = None,
+) -> int:
+    """
+    Mark abandoned queued/processing uploads as failed.
+
+    A Celery worker SIGKILL or Railway redeploy can terminate the process before
+    task exception handlers run. Without this recovery, stale heavy media rows
+    permanently consume the heavy-media capacity slot.
+    """
+
+    stale_before = datetime.now(timezone.utc).timestamp() - (
+        settings.PROCESSING_STALE_AFTER_SECONDS
+    )
+    upload_query = (
+        select(Upload)
+        .where(
+            Upload.status.in_(
+                [
+                    UploadStatus.QUEUED,
+                    UploadStatus.PROCESSING,
+                ]
+            ),
+        )
+    )
+    if upload_id is not None:
+        upload_query = upload_query.where(Upload.id == upload_id)
+
+    recovered = 0
+    now = datetime.now(timezone.utc)
+    for upload in db.scalars(upload_query).all():
+        run = db.scalar(
+            select(ProcessingRun)
+            .where(ProcessingRun.upload_id == upload.id)
+            .order_by(ProcessingRun.started_at.desc())
+        )
+        if run is None or run.status != RunStatus.RUNNING:
+            continue
+
+        started_at = run.started_at
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+
+        if started_at.timestamp() > stale_before:
+            continue
+
+        logger.warning(
+            "Recovering stale processing upload | upload_id=%s run_id=%s status=%s",
+            upload.id,
+            run.id,
+            upload.status,
+        )
+        upload.status = UploadStatus.FAILED
+        run.status = RunStatus.FAILED
+        run.completed_at = now
+        run.duration_ms = int((now - started_at).total_seconds() * 1000)
+
+        unfinished_steps = db.scalars(
+            select(ProcessingStep).where(
+                ProcessingStep.processing_run_id == run.id,
+                ProcessingStep.status.in_(
+                    [
+                        StepStatus.PENDING,
+                        StepStatus.RUNNING,
+                    ]
+                ),
+            )
+        ).all()
+        for step in unfinished_steps:
+            step.status = StepStatus.FAILED
+            step.completed_at = now
+            step.error_message = (
+                "Processing worker stopped before this step completed."
+            )
+            step_started_at = step.started_at or run.started_at
+            if step_started_at.tzinfo is None:
+                step_started_at = step_started_at.replace(tzinfo=timezone.utc)
+            step.duration_ms = int(
+                (now - step_started_at).total_seconds() * 1000
+            )
+
+        recovered += 1
+
+    if recovered:
+        db.commit()
+
+    return recovered
