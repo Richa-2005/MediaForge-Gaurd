@@ -29,6 +29,16 @@ GPU-backed inference on Modal for heavier model workloads.
   <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=24&duration=3000&pause=1200&color=D1D5DB&center=true&vCenter=true&width=800&lines=Why+MediaForge-Guard%3F;Building+Trust+in+the+Age+of+Synthetic+Media;Moving+Beyond+Binary+AI+Predictions" />
 </p>
 
+# Demo Video
+<p align="center">
+  <a href="https://youtu.be/Y1RfYltdC1U">
+    <img src="./assests/MediaForgeGaurd_thumbnail.png" width="600" alt="MediaForge Guard Demo">
+  </a>
+</p>
+<p align="center">
+  <strong>🎥 Click the image above to watch the full demo.</strong>
+</p>
+
 # Why MediaForge-Guard?
 
 With the rapid evolution of generative AI, creating realistic synthetic
