@@ -14,10 +14,11 @@ def test_remote_audio_client_posts_audio(monkeypatch, tmp_path):
     audio_path.write_bytes(b"audio")
     captured = {}
 
-    def fake_post(url, *, files, headers, timeout):
+    def fake_post(url, *, files, headers, timeout, follow_redirects):
         captured["url"] = url
         captured["headers"] = headers
         captured["timeout"] = timeout
+        captured["follow_redirects"] = follow_redirects
         assert files["file"][0] == "sample.wav"
         return httpx.Response(
             200,
@@ -42,6 +43,7 @@ def test_remote_audio_client_posts_audio(monkeypatch, tmp_path):
         "url": "https://audio.example.modal.run/transcribe",
         "headers": {"Authorization": "Bearer secret"},
         "timeout": 12,
+        "follow_redirects": True,
     }
     assert result == {
         "text": "hello world",
