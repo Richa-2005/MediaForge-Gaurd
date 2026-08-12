@@ -1,5 +1,9 @@
 # MediaForge Guard
 
+> AI-assisted media verification for images, video, audio, text, and public media URLs.
+
+**Live Project:** [MediaForge-Gaurd Live Demo](https://media-forge-gaurd-v1.vercel.app/)
+
 <p align="center">
   <img src="./assests/hero.svg" alt="MediaForge-Guard Architecture" width="100%">
 </p>
@@ -16,9 +20,10 @@ trusted by appearance alone.
 Generative AI has made synthetic images, manipulated media, and misleading
 information increasingly difficult to identify.
 
-MediaForge-Guard addresses this challenge by providing an AI-powered
-multimodal verification system that analyzes digital content through
-multiple forensic perspectives.
+MediaForge-Guard addresses this challenge with an AI-powered multimodal
+verification system for images, video, audio, text, and supported public
+media URLs. The system combines lightweight orchestration on Railway with
+GPU-backed inference on Modal for heavier model workloads.
 
 <p align="center">
   <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=24&duration=3000&pause=1200&color=D1D5DB&center=true&vCenter=true&width=800&lines=Why+MediaForge-Guard%3F;Building+Trust+in+the+Age+of+Synthetic+Media;Moving+Beyond+Binary+AI+Predictions" />
@@ -84,7 +89,10 @@ Analyze digital content through multiple AI-driven perspectives.
 
 <ul>
 <li>Image analysis</li>
+<li>Video frame analysis</li>
+<li>Audio transcription and audio signals</li>
 <li>Text analysis</li>
+<li>Direct URL, YouTube, and Reddit media ingestion</li>
 <li>Metadata inspection</li>
 <li>Forensic feature extraction</li>
 </ul>
@@ -107,8 +115,8 @@ A modular AI pipeline where specialized components collaborate instead of relyin
 <ul>
 <li>Independent model evaluation</li>
 <li>Flexible model replacement</li>
-<li>Scalable inference workflows</li>
-<li>Future media expansion</li>
+<li>Modal GPU inference for heavy image/video/audio work</li>
+<li>Queue isolation for image, text, video, and audio jobs</li>
 </ul>
 
 </td>
@@ -256,6 +264,116 @@ Vite proxies `/api` to `VITE_API_BASE_URL`, defaulting to
 `http://localhost:8000`. Use a relative value or leave it empty when the
 browser should call same-origin `/api` routes in production.
 
+Frontend media visibility is controlled at build time with:
+
+```bash
+VITE_DISABLED_EXTENSIONS=
+```
+
+Set it to an empty value to show all supported uploads. During earlier staged
+deployments, this was used to hide heavy media:
+
+```bash
+VITE_DISABLED_EXTENSIONS=mp4,mp3,wav
+VITE_DISABLED_EXTENSIONS=mp3,wav
+```
+
+Because Vite bakes env vars into the frontend bundle, changing this value
+requires rebuilding/redeploying the frontend.
+
+## Current V2 Architecture
+
+```text
+Frontend
+  -> FastAPI API
+  -> Supabase Storage
+  -> Celery + Upstash Redis
+  -> Railway worker orchestration
+       -> lightweight preprocessing
+       -> Modal GPU endpoints for heavy inference
+       -> database persistence
+       -> report generation
+  -> frontend progress/results views
+```
+
+Media-specific flow:
+
+```text
+Image
+  -> Railway preprocessing
+  -> Modal Vision /predict
+  -> forensic evidence + report
+
+Video
+  -> Railway extracts capped sampled frames
+  -> each frame uses lightweight Modal-backed vision prediction
+  -> Railway aggregates highest-risk frame
+  -> report
+
+Audio
+  -> Railway prepares audio
+  -> Modal Audio /transcribe
+  -> local lightweight audio evidence aggregation
+  -> report
+
+Text
+  -> Railway text/fact-check/fusion agents
+  -> report
+```
+
+Public URL ingestion currently supports:
+
+- direct media URLs
+- YouTube via `yt-dlp`
+- Reddit image/video media posts
+
+Instagram, X, TikTok, and Facebook links are detected but intentionally return
+clear unsupported-platform messages.
+
+## Modal GPU Services
+
+Heavy inference is separated from Railway:
+
+- `modal/modal_vision_service.py`
+  - endpoint: `/predict`
+  - used for image uploads and sampled video frames
+  - loads `rashmijha06/mediaforge_vision/mediaforge_vision_v1.pth`
+- `modal/modal_audio_service.py`
+  - endpoint: `/transcribe`
+  - used for Whisper transcription
+
+Deploy:
+
+```bash
+modal deploy modal/modal_vision_service.py
+modal deploy modal/modal_audio_service.py
+```
+
+Railway API and worker env vars:
+
+```bash
+VISION_INFERENCE_PROVIDER=modal
+MODAL_VISION_ENDPOINT_URL=https://...modal.run/predict
+
+AUDIO_INFERENCE_PROVIDER=modal
+MODAL_AUDIO_ENDPOINT_URL=https://...modal.run/transcribe
+
+MODAL_API_TOKEN=<shared-random-token>
+DISABLED_MEDIA_TYPES=[]
+```
+
+Do not use Modal dashboard URLs such as `https://modal.com/apps/...` for
+Railway endpoint configuration. Use deployed `*.modal.run` URLs.
+
+## Production Safeguards
+
+- Separate Celery queues for image, text, video, and audio.
+- Heavy-media capacity guard to avoid overloading free-tier workers.
+- Stale processing recovery for worker SIGKILL/redeploy cases.
+- Video frame caps and 1 FPS sampling to limit compute and latency.
+- Safe MIME fallback for direct uploads detected as `application/octet-stream`
+  when the file extension is a known supported media type.
+
 ## Docker Deployment
 
 The production-style Docker setup uses:
@@ -265,6 +383,7 @@ The production-style Docker setup uses:
 - `worker`: Celery worker using the same backend image
 - `db`: PostgreSQL
 - `redis`: Celery broker and result backend
+- Modal: external GPU inference for vision and audio
 
 Create the Docker environment file:
 
@@ -312,19 +431,34 @@ backend container, so the production build can use same-origin API requests.
 MediaForge-Guard
 │
 ├── backend
-│   ├── api
-│   ├── ai_workers
-│   ├── models
-│   ├── pipelines
+│   ├── app
+│   ├── scripts
+│   ├── storage
 │   └── tests
 │
+├── ai_workers
+│   └── src
+│       ├── agents
+│       ├── audio_forensics
+│       ├── clients
+│       ├── pipelines
+│       └── processors
+│
 ├── frontend
-│   ├── app
+│   ├── src
 │   ├── components
-│   ├── public
 │   └── styles
 │
-├── assets
+├── modal
+│   ├── modal_vision_service.py
+│   └── modal_audio_service.py
+│
+├── ml
+│   ├── datasets
+│   ├── models
+│   └── training
+│
+├── assests
 │   ├── hero.svg
 │   └── screenshots
 │

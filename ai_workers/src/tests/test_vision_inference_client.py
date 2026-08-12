@@ -17,10 +17,11 @@ def test_remote_vision_client_posts_image(monkeypatch, tmp_path):
     image_path.write_bytes(b"image")
     captured = {}
 
-    def fake_post(url, *, files, headers, timeout):
+    def fake_post(url, *, files, headers, timeout, follow_redirects):
         captured["url"] = url
         captured["headers"] = headers
         captured["timeout"] = timeout
+        captured["follow_redirects"] = follow_redirects
         assert files["file"][0] == "sample.jpg"
         return httpx.Response(
             200,
@@ -46,6 +47,7 @@ def test_remote_vision_client_posts_image(monkeypatch, tmp_path):
         "url": "https://modal.example/predict",
         "headers": {"Authorization": "Bearer secret"},
         "timeout": 12,
+        "follow_redirects": True,
     }
     assert result["label"] == "authentic"
     assert result["model"]["name"] == "MediaForge Vision"

@@ -46,6 +46,7 @@ class RemoteVisionInferenceClient:
                     },
                     headers=headers,
                     timeout=self.timeout_seconds,
+                    follow_redirects=True,
                 )
             response.raise_for_status()
         except httpx.TimeoutException as exc:
